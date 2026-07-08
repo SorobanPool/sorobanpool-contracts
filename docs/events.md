@@ -2,7 +2,7 @@
 
 Topics: `(contract_symbol, event_symbol, key)`; the key is the pool id, dispute id, or address shown. The indexer depends on this file: any change is breaking.
 
-Short symbols are limited to 9 characters, so some brief names are abbreviated.
+Short symbols are limited to 9 characters, so some brief names are abbreviated. The *contract* symbol is therefore `rep` for reputation and `bond` for supplier_bond (not their crate names). `scripts/export_artifacts.py` fails CI if this table and the emitted events ever disagree, in either direction.
 
 | Contract | Event symbol | Key | Data |
 |---|---|---|---|
@@ -13,8 +13,8 @@ Short symbols are limited to 9 characters, so some brief names are abbreviated.
 | registry | `user_att` | user | `(role, level)` |
 | registry | `user_rev` / `user_sus` | user | `(role, reason)` |
 | registry | `user_uns` | user | role |
-| reputation | `rep_upd` | subject | `(role, event, tier)` |
-| supplier_bond | `deposit` / `withdraw` / `slashed` | supplier | amount |
+| rep | `rep_upd` | subject | `(role, event, tier)` |
+| bond | `deposit` / `withdraw` / `slashed` | supplier | amount |
 | group_buy | `pool_new` | pool id | `(organizer, supplier, offer_hash, hub_hash)` |
 | group_buy | `committed` / `commit_up` | pool id | `(member, units, amount)` |
 | group_buy | `withdrawn` | pool id | `(member, refund)` |
