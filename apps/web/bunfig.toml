@@ -1,4 +1,0 @@
-[test]
-# Register the happy-dom global environment before any test file runs so
-# React component tests have a DOM to render into.
-preload = ["./test/happydom.ts"]
