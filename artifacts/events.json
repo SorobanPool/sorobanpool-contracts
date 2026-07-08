@@ -169,6 +169,12 @@
   },
   {
     "contract": "group_buy",
+    "event": "alloc_ok",
+    "key": "pool id",
+    "data": "received units (shortfall allocation finished; settle is now allowed)"
+  },
+  {
+    "contract": "group_buy",
     "event": "pickup",
     "key": "pool id",
     "data": "member"

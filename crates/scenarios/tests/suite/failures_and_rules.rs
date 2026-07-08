@@ -13,6 +13,10 @@ fn shortfall_is_allocated_pro_rata_and_supplier_paid_for_received_only() {
     c.advance(48 * 3600);
     assert!(c.gb.try_settle(&pool).is_err());
     assert!(c.gb.allocate_shortfall(&pool, &10));
+    assert!(
+        format!("{:?}", c.env.events().all()).contains("alloc_ok"),
+        "alloc_ok event emitted when allocation finishes"
+    );
 
     let alloc: u32 = t.iter().map(|m| c.gb.allocated_units_of(&pool, m)).sum();
     assert_eq!(alloc, 400);
