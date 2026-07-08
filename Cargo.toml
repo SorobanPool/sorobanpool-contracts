@@ -25,3 +25,11 @@ lto = true
 [profile.release-with-logs]
 inherits = "release"
 debug-assertions = true
+
+# Keep test binaries small: the SDK test host is large and debug info multiplies it.
+[profile.dev]
+debug = 0
+incremental = false
+
+[profile.test]
+debug = 0
