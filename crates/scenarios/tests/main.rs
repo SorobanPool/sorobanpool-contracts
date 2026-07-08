@@ -1,3 +1,5 @@
+#[path = "suite/budget.rs"]
+mod budget;
 #[path = "suite/disputes_and_bond.rs"]
 mod disputes_and_bond;
 #[path = "suite/failures_and_rules.rs"]
