@@ -483,7 +483,7 @@ impl GroupBuy {
             id,
             organizer: organizer.clone(),
             terms: terms.clone(),
-            hub_hash,
+            hub_hash: hub_hash.clone(),
             organizer_fee_bp,
             platform_fee_bp: params.platform_fee_bp,
             cluster,
@@ -520,7 +520,7 @@ impl GroupBuy {
             C,
             symbol_short!("pool_new"),
             id,
-            (organizer, terms.supplier, terms.offer_hash),
+            (organizer, terms.supplier, terms.offer_hash, hub_hash),
         );
         id
     }

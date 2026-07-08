@@ -15,7 +15,7 @@ Short symbols are limited to 9 characters, so some brief names are abbreviated.
 | registry | `user_uns` | user | role |
 | reputation | `rep_upd` | subject | `(role, event, tier)` |
 | supplier_bond | `deposit` / `withdraw` / `slashed` | supplier | amount |
-| group_buy | `pool_new` | pool id | `(organizer, supplier, offer_hash)` |
+| group_buy | `pool_new` | pool id | `(organizer, supplier, offer_hash, hub_hash)` |
 | group_buy | `committed` / `commit_up` | pool id | `(member, units, amount)` |
 | group_buy | `withdrawn` | pool id | `(member, refund)` |
 | group_buy | `tier_up` | pool id | `(tier_index, total_units)` |

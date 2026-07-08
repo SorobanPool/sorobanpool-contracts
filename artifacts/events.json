@@ -81,7 +81,7 @@
     "contract": "group_buy",
     "event": "pool_new",
     "key": "pool id",
-    "data": "(organizer, supplier, offer_hash)"
+    "data": "(organizer, supplier, offer_hash, hub_hash)"
   },
   {
     "contract": "group_buy",
