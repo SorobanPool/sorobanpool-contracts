@@ -4,6 +4,8 @@ Soroban smart contracts for SorobanPool: group buying with escrow. **Buy togethe
 
 Contracts: `config`, `registry`, `group_buy`, `disputes`, `supplier_bond`, `reputation`, plus shared crate `sp_common`.
 
+The product and architecture brief (source of truth): [docs/brief.md](docs/brief.md). Sibling repos: [backend](https://github.com/SorobanPool/sorobanpool-backend), [frontend](https://github.com/SorobanPool/sorobanpool-frontend).
+
 ## Develop
 ```
 cargo fmt --all && cargo clippy --workspace --all-targets -- -D warnings
