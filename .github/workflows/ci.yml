@@ -38,3 +38,26 @@ jobs:
             artifacts/events.json
             vectors/pricing-vectors.json
             target/wasm32v1-none/release/*.wasm
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.98.1
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - name: line coverage floor (brief 6.8 asks 90% on group_buy, disputes, supplier_bond)
+        run: |
+          cargo llvm-cov --workspace --summary-only --json --output-path cov.json
+          python3 - <<'PY'
+          import json,sys
+          bad=[]
+          for f in json.load(open("cov.json"))["data"][0]["files"]:
+              n=f["filename"]
+              if any(n.endswith(f"contracts/{c}/src/lib.rs") for c in ("group_buy","disputes","supplier_bond")):
+                  pct=f["summary"]["lines"]["percent"]; print(n,round(pct,2))
+                  if pct<90: bad.append(n)
+          sys.exit(1 if bad else 0)
+          PY
