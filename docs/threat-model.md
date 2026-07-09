@@ -19,4 +19,4 @@ Trust boundaries: contracts are the source of truth for escrow; the backend cann
 | Storage archival of live data | TTL bumping on touch plus backend job | A pool left untouched for long periods needs the keeper |
 | Dust theft | `sweep_dust` only moves escrow beyond `owed_total − refunds_paid`, blocked while anything is frozen | – |
 
-Not covered yet: external audit, formal verification, fuzzing beyond the property tests, gas/budget tests against network limits (see M6).
+Covered since: resource budget tests at a 200-member pool (`crates/scenarios/tests/suite/budget.rs`), ≥90% line coverage on `group_buy`/`disputes`/`supplier_bond` enforced in CI, randomised operation-sequence fuzzing (`crates/scenarios/tests/suite/fuzz.rs`). Not covered yet: external audit, formal verification, coverage-guided fuzzing (needs nightly Rust).
