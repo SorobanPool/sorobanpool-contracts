@@ -7,7 +7,7 @@ What is done, what is left, and who owns the parts this repository cannot finish
 - [x] ≥90% line coverage on `group_buy`, `disputes`, `supplier_bond`, enforced in CI.
 - [x] Resource budget tests at a 200-member worst case (commit/settle/claim_refund <50%, push_refunds(25) <80% of an assumed limit).
 - [ ] **External audit.** Not something this repository can do; needs a hired firm. `scripts/deploy.sh` already refuses a mainnet deploy without `MAINNET_CONFIRM=yes`, a clean tree, a release tag and an audit hash — the hash itself still needs to come from a real audit.
-- [ ] Confirm the budget tests' assumed CPU/memory limits against the real network (native execution under-reports Wasm cost); re-run with RPC simulation before mainnet.
+- [x] Budget test limits are the real testnet network config (not assumed): `txMaxInstructions`=400,000,000, `txMemoryLimit`=41,943,040 bytes, read live via RPC. Still: native execution under-reports Wasm cost, and mainnet config may differ from testnet's — re-confirm there before relying on this.
 - [ ] Coverage-guided fuzzing (cargo-fuzz, needs nightly Rust) as a follow-up to the property-based fuzzing already in place.
 - [ ] Admin key: must be a real multisig before mainnet (see threat model).
 
