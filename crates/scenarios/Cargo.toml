@@ -16,4 +16,4 @@ group_buy = { path = "../../contracts/group_buy" }
 disputes = { path = "../../contracts/disputes" }
 
 [dev-dependencies]
-proptest = "1"
+proptest = "1.12"
