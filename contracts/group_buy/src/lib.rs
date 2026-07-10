@@ -77,6 +77,8 @@ enum Key {
 const C: Symbol = symbol_short!("group_buy");
 const PAGE: u32 = 50;
 const COLLECTIVE_CONFIRM_BP: u32 = 5000;
+/// Brief 5.9: a supplier is suspended after two failures within this window.
+const SUSPEND_WINDOW_SECS: u64 = 90 * 24 * 3600;
 
 fn fail<T>(env: &Env, e: Error) -> T {
     panic_with_error!(env, e)
@@ -193,12 +195,21 @@ fn end_refundable(env: &Env, pool: &mut Pool, state: PoolState, blame_supplier: 
     pool.state = state;
     pool.owed_total = pool.total_paid;
     if blame_supplier {
-        rep(
-            env,
-            &pool.terms.supplier,
-            Role::Supplier,
-            symbol_short!("failed"),
-        );
+        let supplier = &pool.terms.supplier;
+        let prev_failure = reputation(env)
+            .stats(supplier, &Role::Supplier)
+            .last_failed_at;
+        rep(env, supplier, Role::Supplier, symbol_short!("failed"));
+        // Second failure within 90 days: suspend, so the supplier cannot be offered new pools. Pools already
+        // running are unaffected and every exit stays open to their members.
+        if prev_failure > 0 && now(env).saturating_sub(prev_failure) <= SUSPEND_WINDOW_SECS {
+            registry(env).suspend(
+                &me(env),
+                supplier,
+                &Role::Supplier,
+                &symbol_short!("fail_90d"),
+            );
+        }
     }
 }
 
@@ -1138,6 +1149,8 @@ impl GroupBuy {
             }
             if pool.state == PoolState::Settled {
                 pool.owed_total += to_member;
+                // push_refunds has usually walked every member by now; rewind so the keeper pays this credit.
+                pool.refund_cursor = 0;
             } else {
                 pool.diverted += to_member;
             }

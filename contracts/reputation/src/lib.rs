@@ -108,6 +108,7 @@ impl Reputation {
             s.pools_settled += 1;
         } else if event == symbol_short!("failed") {
             s.pools_failed += 1;
+            s.last_failed_at = env.ledger().timestamp();
         } else if event == symbol_short!("on_time") {
             s.on_time += 1;
         } else if event == symbol_short!("late") {

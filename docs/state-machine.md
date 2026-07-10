@@ -9,7 +9,9 @@ Expired                                   ▼                  ▼              
                                         Failed             Failed/Cancelled        Delivered ──settle──▶ Settled
 Open/Filled/Accepted ──cancel_pool──▶ Cancelled                                      (frozen disputes held back)
 ```
-Refundable end states: `Expired`, `Failed`, `Cancelled` (full refund) and `Settled` (price-tier / shortfall refunds and dispute credits). Refunds are pull (`claim_refund`) with a permissionless bounded push (`push_refunds`).
+Refundable end states: `Expired`, `Failed`, `Cancelled` (full refund) and `Settled` (price-tier / shortfall refunds and dispute credits). Refunds are pull (`claim_refund`) with a permissionless bounded push (`push_refunds`). A dispute credit applied after settlement rewinds the push cursor so the keeper pays it too.
+
+Supplier failures (`reject`, `fail_accept`, `fail_delivery`) record `failed` in `reputation`; a second failure within 90 days of the previous one suspends the supplier in `registry` (brief 5.9).
 
 | Transition | Who | Preconditions |
 |---|---|---|
