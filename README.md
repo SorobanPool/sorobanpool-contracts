@@ -45,8 +45,8 @@ flowchart LR
     GB -- "status / level / suspend" --> REG
     GB <-- "transfer" --> USDC
     C -. "read by every contract" .- GB
-    C -. "" .- D
-    C -. "" .- REG
+    C -.- D
+    C -.- REG
 ```
 
 | Contract | Responsibility | Who may call privileged functions |
