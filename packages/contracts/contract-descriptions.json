@@ -1,9 +1,0 @@
-{
-  "exchange-router": "Entry point for all trading operations: opening and closing positions, placing and cancelling orders.",
-  "synthetics-reader": "Market snapshots including prices, open interest, funding rates, and oracle state.",
-  "data-store": "Persistent storage for market configuration, pool state, and position collateral.",
-  "order-vault": "Holds collateral until an order is filled or cancelled, protecting against withdrawal during execution.",
-  "test-faucet": "Testnet utility to distribute test tokens to new traders.",
-  "test-token": "Testnet representative Stellar asset (TUSDC); all test token contracts share this interface.",
-  "glv-router": "Generalized liquidity vault for multi-pool liquidity provision and risk management."
-}
