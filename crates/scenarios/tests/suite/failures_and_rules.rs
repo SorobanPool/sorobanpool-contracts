@@ -1,5 +1,5 @@
 use scenarios::*;
-use soroban_sdk::testutils::Address as _;
+use soroban_sdk::testutils::{Address as _, Events as _};
 use soroban_sdk::{symbol_short, Address};
 use sp_common::types::{PoolState, Role};
 
