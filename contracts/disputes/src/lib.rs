@@ -7,7 +7,7 @@ use sp_common::clients::{ConfigClient, GroupBuyClient, ReputationClient};
 use sp_common::events::emit;
 use sp_common::keys;
 use sp_common::math::{bp_of, mul_div_floor};
-use sp_common::ttl::{bump_instance, bump_persistent};
+use sp_common::ttl::bump_persistent;
 use sp_common::types::{Dispute, DisputeReason, Outcome, Role};
 
 #[contracterror]
@@ -217,7 +217,6 @@ impl Disputes {
 
         let id: u64 = env.storage().instance().get(&Key::NextId).unwrap_or(1);
         env.storage().instance().set(&Key::NextId, &(id + 1));
-        bump_instance(&env);
 
         // Freezes first: group_buy rejects if the window is closed or the amount is too large.
         g.freeze(&me(&env), &pool_id, &claimed_amount);

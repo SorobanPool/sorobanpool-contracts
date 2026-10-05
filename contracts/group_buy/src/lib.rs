@@ -9,7 +9,7 @@ use sp_common::keys;
 use sp_common::math::{
     bp_of, ceiling_price, cumulative_alloc, final_unit_price, tier_index, validate_tiers,
 };
-use sp_common::ttl::{bump_instance, bump_persistent};
+use sp_common::ttl::bump_persistent;
 use sp_common::types::{Commitment, Params, Pool, PoolState, PoolTerms, Role, Status};
 
 #[contracterror]
@@ -478,7 +478,6 @@ impl GroupBuy {
 
         let id: u64 = env.storage().instance().get(&Key::NextId).unwrap_or(1);
         env.storage().instance().set(&Key::NextId, &(id + 1));
-        bump_instance(&env);
         let pool = Pool {
             id,
             organizer: organizer.clone(),

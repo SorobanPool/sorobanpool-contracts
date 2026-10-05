@@ -4,7 +4,6 @@ use soroban_sdk::{
     Address, BytesN, Env, Symbol, Vec,
 };
 use sp_common::events::emit;
-use sp_common::ttl::bump_instance;
 use sp_common::types::{caps, Params};
 
 #[contracterror]
@@ -149,7 +148,6 @@ impl Config {
             panic_with_error!(&env, e);
         }
         env.storage().instance().set(&Key::Params, &params);
-        bump_instance(&env);
         emit(
             &env,
             C,
@@ -160,7 +158,6 @@ impl Config {
     }
 
     pub fn get_params(env: Env) -> Params {
-        bump_instance(&env);
         env.storage()
             .instance()
             .get(&Key::Params)
