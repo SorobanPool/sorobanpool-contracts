@@ -1,0 +1,18 @@
+[package]
+name = "registry"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = { workspace = true }
+sp_common = { workspace = true }
+
+[dev-dependencies]
+config = { path = "../config" }
+soroban-sdk = { workspace = true, features = ["testutils"] }
