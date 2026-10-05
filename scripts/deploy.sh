@@ -43,9 +43,10 @@ for c in registry reputation supplier_bond group_buy disputes; do
 done
 
 COMMIT="$(git rev-parse HEAD)"
+DIRTY=false; [ -z "$(git status --porcelain)" ] || DIRTY=true
 JSON="$(jq -n --arg net "$NETWORK" --arg commit "$COMMIT" --arg usdc "$USDC_CONTRACT_ID" \
-  --arg admin "$ADMIN_ADDRESS" --arg treasury "$TREASURY_ADDRESS" \
-  '{network:$net, commit:$commit, usdc:$usdc, admin:$admin, treasury:$treasury, contracts:{}}')"
+  --arg admin "$ADMIN_ADDRESS" --arg treasury "$TREASURY_ADDRESS" --argjson dirty "$DIRTY" \
+  '{network:$net, commit:$commit, dirtyTree:$dirty, usdc:$usdc, admin:$admin, treasury:$treasury, contracts:{}}')"
 for c in "${CONTRACTS[@]}"; do
   HASH="$(sha256sum "target/wasm32v1-none/release/${c}.wasm" | cut -d' ' -f1)"
   JSON="$(echo "$JSON" | jq --arg c "$c" --arg id "${IDS[$c]}" --arg h "$HASH" '.contracts[$c]={id:$id, wasmHash:$h}')"
