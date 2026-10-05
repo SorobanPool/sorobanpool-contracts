@@ -14,11 +14,25 @@ jobs:
           components: rustfmt, clippy
           targets: wasm32v1-none
       - uses: Swatinem/rust-cache@v2
-      - run: cargo fmt --all -- --check
-      - run: cargo clippy --workspace --all-targets -- -D warnings
-      - run: cargo test --workspace
       - name: install stellar-cli
         run: cargo install --locked stellar-cli --version 27.1.0
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace   # includes the pricing-vectors staleness check
       - run: stellar contract build
       - name: wasm size report
         run: ls -l target/wasm32v1-none/release/*.wasm
+      - name: bindings are fresh
+        run: |
+          scripts/bindings.sh
+          git diff --exit-code bindings/
+      - name: export errors.json / events.json
+        run: python3 scripts/export_artifacts.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: contract-artifacts
+          path: |
+            artifacts/errors.json
+            artifacts/events.json
+            vectors/pricing-vectors.json
+            target/wasm32v1-none/release/*.wasm
