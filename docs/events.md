@@ -28,6 +28,7 @@ Short symbols are limited to 9 characters, so some brief names are abbreviated.
 | group_buy | `failed` | pool id | `no_accept` or `no_deliv` |
 | group_buy | `delivered` | pool id | `(received_units, evidence_hash)` |
 | group_buy | `shortfall` | pool id | missing units |
+| group_buy | `alloc_ok` | pool id | received units (shortfall allocation finished; `settle` is now allowed) |
 | group_buy | `pickup` | pool id | member |
 | group_buy | `settled` | pool id | `(supplier_net, platform_fee, organizer_fee)` |
 | group_buy | `refund` | pool id | `(member, amount)` |

@@ -869,6 +869,7 @@ impl GroupBuy {
         if pool.state != PoolState::Delivered {
             fail::<()>(&env, Error::WrongState);
         }
+        let was_done = pool.alloc_done;
         let mut done = 0u32;
         while !pool.alloc_done && done < max {
             if pool.alloc_cursor >= pool.listed_members {
@@ -899,6 +900,15 @@ impl GroupBuy {
             }
         }
         save_pool(&env, &pool);
+        if pool.alloc_done && !was_done {
+            emit(
+                &env,
+                C,
+                symbol_short!("alloc_ok"),
+                pool_id,
+                pool.received_units,
+            );
+        }
         pool.alloc_done
     }
 
