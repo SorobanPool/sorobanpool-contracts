@@ -1,11 +1,14 @@
 //! Resource budget (brief 6.8) at the worst case of 200 members.
-//! Limits are the conservative per-transaction figures: 100M CPU instructions, 40 MiB memory.
-//! Native test execution under-reports VM costs, so these are regression guards, not a substitute for simulation.
+//! Limits are the real per-transaction network limits, read from testnet's live config settings
+//! (`ConfigSettingContractComputeV0`, protocol 29, via RPC `getLedgerEntries`) rather than assumed:
+//! `txMaxInstructions` = 400,000,000 and `txMemoryLimit` = 41,943,040 bytes (40 MiB, exact). Mainnet
+//! may differ; re-check before relying on this there. Native test execution under-reports VM costs,
+//! so these are regression guards, not a substitute for RPC simulation.
 use scenarios::*;
 use soroban_sdk::Address;
 
-const CPU_LIMIT: u64 = 100_000_000;
-const MEM_LIMIT: u64 = 40 * 1024 * 1024;
+const CPU_LIMIT: u64 = 400_000_000;
+const MEM_LIMIT: u64 = 41_943_040;
 const MEMBERS: usize = 200;
 
 fn measure<R>(c: &Ctx, label: &str, pct: u64, f: impl FnOnce() -> R) -> R {
