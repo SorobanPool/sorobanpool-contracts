@@ -14,7 +14,13 @@ stellar contract build     # wasm output in target/wasm32v1-none/release
 ```
 Mainnet deploys require `MAINNET_CONFIRM=yes`, a clean tree and a release tag (see `scripts/deploy.sh`). Testnet only until the audit milestone is complete.
 
-Status: M1 (core contracts) deployed to testnet; see `deployments/testnet.json`, `docs/`, and `vectors/pricing-vectors.json` (the cross-repo pricing parity vectors).
+Status: feature-complete and deployed to testnet (not audited; do not use on mainnet). See `deployments/testnet.json`, `docs/`, and `vectors/pricing-vectors.json` (the cross-repo pricing parity vectors).
+
+## Quality gates (CI)
+- 62 tests, including scenario flows, 600 pricing vectors, a proptest conservation property, and randomised operation-sequence fuzzing (tokens conserved, escrow equals recorded balance, rejected calls are typed contract errors).
+- Line coverage floor of 90% on `group_buy`, `disputes` and `supplier_bond` (currently 95%, 95% and 94%), enforced by the `coverage` job.
+- Resource budget tests at a 200-member pool: `commit`, `settle`, `claim_refund` stay under 50% and `push_refunds(25)` under 80% of an assumed 100M-CPU / 40 MiB limit (measured: 4%, 7%, 3% and 39% CPU). These run natively, which under-reports Wasm cost, so re-check with network simulation before mainnet.
+- Not done: coverage-guided fuzzing (needs nightly Rust), formal verification, external audit.
 
 ## Layout
 - `contracts/` — `config`, `registry`, `reputation`, `supplier_bond`, `group_buy`, `disputes`
