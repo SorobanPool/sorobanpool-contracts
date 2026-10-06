@@ -64,14 +64,44 @@ proptest! {
         typed(c.gb.try_close(&pool))?;
         let p = c.gb.pool(&pool);
         if p.state == PoolState::Filled {
-            c.deliver(pool, (p.total_units as u64 * received_pct as u64 / 100) as u32);
-            c.gb.allocate_shortfall(&pool, &50);
-            c.advance(48 * 3600);
-            c.gb.settle(&pool);
+            // A pool that filled early may have sat past the accept window while time advanced: the supplier is then
+            // too late and the keeper's fail_accept refunds everyone.
+            if c.gb.try_accept(&c.supplier, &pool, &0).is_ok() {
+                c.gb.dispatch(&c.supplier, &pool, &None);
+                let received = (p.total_units as u64 * received_pct as u64 / 100) as u32;
+                c.gb.confirm_delivery(&c.organizer, &pool, &received, &h(&c.env, 5));
+                c.gb.allocate_shortfall(&pool, &50);
+                c.advance(48 * 3600);
+                c.gb.settle(&pool);
+            } else {
+                c.gb.fail_accept(&pool);
+                prop_assert_eq!(c.gb.pool(&pool).state, PoolState::Failed);
+            }
         }
         c.gb.push_refunds(&pool, &50);
         c.gb.sweep_dust(&pool);
         prop_assert_eq!(total(&c), start);
         prop_assert_eq!(c.bal(&c.gb.address), 0);
     }
+}
+
+/// Regression from a CI fuzz seed: a pool that fills early and then idles past the accept window cannot be accepted;
+/// the keeper's fail_accept refunds every member in full.
+#[test]
+fn early_filled_pool_past_accept_window_is_refunded() {
+    let c = setup();
+    let pool = c.pool(0);
+    let (a, b) = (c.trader(), c.trader());
+    c.gb.commit(&a, &pool, &250);
+    c.gb.commit(&b, &pool, &250); // max_units 500: filled immediately
+    assert_eq!(c.gb.pool(&pool).state, PoolState::Filled);
+    c.advance(2 * DAY);
+    assert!(c.gb.try_accept(&c.supplier, &pool, &0).is_err());
+    c.gb.fail_accept(&pool);
+    assert_eq!(c.gb.pool(&pool).state, PoolState::Failed);
+    c.gb.push_refunds(&pool, &10);
+    assert_eq!(
+        (c.bal(&a), c.bal(&b), c.bal(&c.gb.address)),
+        (1_000 * USDC, 1_000 * USDC, 0)
+    );
 }
