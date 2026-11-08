@@ -2,7 +2,7 @@
 
 Soroban smart contracts for SorobanPool: group buying with escrow. **Buy together. Pay on delivery.** Built on Stellar.
 
-Contracts: `config`, `registry`, `group_buy`, `disputes`, `supplier_bond`, `reputation`, plus shared crate `sp_common`.
+Contracts: `config`, `registry`, `group_buy`, `disputes`, `supplier_bond`, `reputation`, `smart_wallet` (each user's passkey-controlled account, ADR 0006), plus shared crate `sp_common`.
 
 The product and architecture brief (source of truth): [docs/brief.md](docs/brief.md). Sibling repos: [backend](https://github.com/SorobanPool/sorobanpool-backend), [frontend](https://github.com/SorobanPool/sorobanpool-frontend).
 
@@ -23,7 +23,7 @@ Status: feature-complete and deployed to testnet (not audited; do not use on mai
 - Not done: coverage-guided fuzzing (needs nightly Rust), formal verification, external audit.
 
 ## Layout
-- `contracts/` — `config`, `registry`, `reputation`, `supplier_bond`, `group_buy`, `disputes`
+- `contracts/` — `config`, `registry`, `reputation`, `supplier_bond`, `group_buy`, `disputes`, `smart_wallet`
 - `crates/sp_common` — shared types, math, cross-contract client traits, TTL helpers
 - `crates/scenarios` — end-to-end scenario and property tests across all contracts
 - `bindings/` — generated TypeScript bindings (CI fails when stale); `artifacts/` — `errors.json`, `events.json`

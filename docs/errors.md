@@ -84,3 +84,8 @@ Generated from the `Error` enums in each contract (namespaced: config 100s, regi
 | 600 | reputation | NotAuthorizedCaller |
 | 601 | reputation | UnknownEvent |
 | 602 | reputation | NotInitialised |
+| 700 | smart_wallet | UnknownSigner |
+| 701 | smart_wallet | SignerExists |
+| 702 | smart_wallet | LastSigner |
+| 703 | smart_wallet | TooManySigners |
+| 704 | smart_wallet | BadCredentialId |

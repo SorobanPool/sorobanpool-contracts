@@ -9,7 +9,9 @@ license = "Apache-2.0"
 repository = "https://github.com/SorobanPool/sorobanpool-contracts"
 
 [workspace.dependencies]
-soroban-sdk = "=29.0.1"
+soroban-sdk = "=28.0.0"
+# Pinned with soroban-sdk: 0.8.0 requires soroban-sdk ^28 (ADR 0006).
+stellar-accounts = "=0.8.0"
 sp_common = { path = "crates/sp_common" }
 
 [profile.release]

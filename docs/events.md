@@ -36,5 +36,6 @@ Short symbols are limited to 9 characters, so some brief names are abbreviated. 
 | disputes | `d_evid` | dispute id | `(party, evidence_hash)` |
 | disputes | `d_resolve` | dispute id | `(arbiter, reasoning_hash)` |
 | disputes | `d_timeout` | dispute id | `true` |
+| wallet | `key_add` / `key_rm` | credential id | `()` (emitted by each user's passkey wallet, not by a SorobanPool core contract; the indexer does not watch wallets) |
 
 Not yet emitted: `tier_changed` (reputation tier changes are carried inside `rep_upd`).
