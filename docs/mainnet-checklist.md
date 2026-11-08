@@ -10,13 +10,16 @@ What is done, what is left, and who owns the parts this repository cannot finish
 - [x] Budget test limits are the real testnet network config (not assumed): `txMaxInstructions`=400,000,000, `txMemoryLimit`=41,943,040 bytes, read live via RPC. Still: native execution under-reports Wasm cost, and mainnet config may differ from testnet's — re-confirm there before relying on this.
 - [ ] Coverage-guided fuzzing (cargo-fuzz, needs nightly Rust) as a follow-up to the property-based fuzzing already in place.
 - [ ] Admin key: must be a real multisig before mainnet (see threat model).
+- [ ] `smart_wallet` (ADR 0006) is new code that holds user funds: include it in the audit scope.
 
 ## Backend
 - [x] API, indexer, keeper jobs (close/fail/allocate/settle/push-refunds/dispute-timeout), ttl-extend, maintenance (offer expiry, sponsor-balance alert, deadline reminders, reconcile), notifier (SMS queue, quiet hours, retries).
 - [x] Rate limiting, Prometheus metrics, generated OpenAPI, S3-compatible storage adapter, passkey sign-in, Sentry error reporting, CI run against real PostgreSQL 16.
 - [ ] **Real naira anchor and withdrawals.** Only a mock exists (ADR 0005). Needs a licensed rail and a business decision on the provider.
-- [ ] **Live FX source.** Only static rates exist; no `fx-refresh` job. Needs at least two independent quote sources.
-- [ ] **Real SMS/WhatsApp and KYC/KYB providers.** The `SmsSender` port exists (console sender only); KYC/KYB is unimplemented. Needs provider contracts.
+- [x] **Live FX.** Two independent sources (`FX_SOURCES=er-api,coingecko`) and the `fx-refresh` job; publishing is blocked on >2% divergence; static rates are refused in production.
+- [ ] A paid FX feed with an SLA alongside the free ones.
+- [x] **KYC/KYB flow** (`/kyc/*`, supplier CAC and bank-name checks) through a provider port with a sandbox; PII sealed with AES-256-GCM; capped attestor (backend ADR 0006).
+- [ ] **Real SMS/WhatsApp and KYC/KYB providers.** The ports exist (console SMS sender, sandbox verification). Needs provider contracts and an NDPA data-processing agreement.
 - [ ] BullMQ (ADR 0002 chose an in-process scheduler for now) — run exactly one worker replica until this moves to a real queue, or multiple replicas will double-send keeper calls and notifications.
 - [ ] OpenTelemetry, a pager integration (alerts are currently log lines), Testcontainers for Redis/MinIO.
 - [ ] S3 adapter and Sentry delivery are tested against local fakes, not the real providers — confirm against the actual provider before relying on them in production.
@@ -25,7 +28,8 @@ What is done, what is left, and who owns the parts this repository cannot finish
 - [x] Full PWA (trader/organizer, supplier, disputes, arbiter, admin), EN + Pidgin, live pool updates (SSE), passkey sign-in, offline support, accessibility (axe, EN/PCM/admin).
 - [x] CI-enforced JS size budget on public pages (Lighthouse).
 - [ ] **Pidgin copy review by a native speaker.** Written by this build, unreviewed.
-- [ ] **Passkey-controlled smart wallet** (ADR 0001) is a separate, bigger decision from the passkey sign-in shipped here (sign-in only, wallet unchanged).
+- [x] **Passkey-controlled smart wallet** (contracts ADR 0006): onboarding creates a `smart_wallet` controlled by the user's passkey; no secret is stored in the browser.
+- [ ] **Recovery when every passkey is lost** (guardian or social recovery); today a user adds a second passkey while they still have the first.
 - [ ] Native-device testing — only Playwright's mobile emulation has run.
 - [ ] Lighthouse performance/LCP thresholds are measured but not gated in CI (only JS size is); add once a stable CI runner baseline is established.
 
