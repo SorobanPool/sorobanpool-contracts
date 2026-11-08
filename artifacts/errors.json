@@ -355,6 +355,11 @@
     "name": "Overflow"
   },
   {
+    "code": 412,
+    "contract": "disputes",
+    "name": "AlreadyDisputed"
+  },
+  {
     "code": 500,
     "contract": "supplier_bond",
     "name": "InvalidAmount"

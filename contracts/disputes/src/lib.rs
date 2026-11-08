@@ -26,6 +26,7 @@ pub enum Error {
     BadOutcome = 409,
     TooMuchEvidence = 410,
     Overflow = 411,
+    AlreadyDisputed = 412,
 }
 
 #[contracttype]
@@ -35,6 +36,8 @@ enum Key {
     NextId,
     Dispute(u64),
     PoolList(u64),
+    /// Set once a party has opened a dispute on a pool; never cleared (see `open`).
+    Opened(u64, Address),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -210,6 +213,15 @@ impl Disputes {
         if claimed_units == 0 || claimed_units > limit {
             fail::<()>(&env, Error::BadClaim);
         }
+        // One dispute per party per pool, open or resolved. Without this a member could re-claim the same units
+        // in many disputes, each freezing (and on RefundMember or SLA timeout, paying out) more of the supplier's
+        // payable than their allocation. It also bounds the pool's dispute list to members + organizer + supplier.
+        let ok = Key::Opened(pool_id, opener.clone());
+        if env.storage().persistent().has(&ok) {
+            fail::<()>(&env, Error::AlreadyDisputed);
+        }
+        env.storage().persistent().set(&ok, &true);
+        bump_persistent(&env, &ok);
         let claimed_amount = ck(&env, (claimed_units as i128).checked_mul(pool.final_price));
         let params = cfg(&env).get_params();
         let pct = ck(&env, bp_of(claimed_amount, params.dispute_deposit_bp));

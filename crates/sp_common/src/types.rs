@@ -191,6 +191,8 @@ pub struct RepStats {
     pub short_deliveries: u32,
     pub pickups_confirmed: u32,
     pub first_active_at: u64,
+    /// Ledger time of the most recent `failed` event (0 if none); drives the 2-failures-in-90-days suspension.
+    pub last_failed_at: u64,
 }
 
 /// Hard caps enforced by `config` (changing them needs a contract upgrade).

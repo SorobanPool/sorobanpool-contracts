@@ -10,5 +10,7 @@ mod failures_and_rules;
 mod fuzz;
 #[path = "suite/happy_path.rs"]
 mod happy_path;
+#[path = "suite/hardening.rs"]
+mod hardening;
 #[path = "suite/properties.rs"]
 mod properties;
