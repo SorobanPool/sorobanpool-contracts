@@ -21,9 +21,13 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace   # includes the pricing-vectors staleness check
-      - run: stellar contract build
+      - run: scripts/build.sh
       - name: wasm size report
         run: ls -l target/wasm32v1-none/release/*.wasm
+      - name: validate deployments schema
+        run: python3 scripts/validate_deployments.py
+      - name: check markdown links
+        run: python3 scripts/check_markdown_links.py
       - name: export errors.json / events.json
         run: python3 scripts/export_artifacts.py
       - uses: actions/upload-artifact@v7
@@ -34,6 +38,12 @@ jobs:
             artifacts/events.json
             vectors/pricing-vectors.json
             target/wasm32v1-none/release/*.wasm
+
+  typos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: crate-ci/typos@master
 
   bindings:
     name: Bindings freshness check

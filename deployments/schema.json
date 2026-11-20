@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SorobanPoolDeployment",
+  "type": "object",
+  "required": [
+    "network",
+    "contracts"
+  ],
+  "properties": {
+    "network": {
+      "type": "string",
+      "enum": ["testnet", "mainnet", "local", "futurenet"]
+    },
+    "commit": {
+      "type": ["string", "null"]
+    },
+    "dirtyTree": {
+      "type": ["boolean", "null"]
+    },
+    "usdc": {
+      "type": ["string", "null"],
+      "pattern": "^(C[A-Z0-9]{55}|G[A-Z0-9]{55})?$"
+    },
+    "admin": {
+      "type": ["string", "null"],
+      "pattern": "^(G[A-Z0-9]{55}|C[A-Z0-9]{55})?$"
+    },
+    "treasury": {
+      "type": ["string", "null"],
+      "pattern": "^(G[A-Z0-9]{55}|C[A-Z0-9]{55})?$"
+    },
+    "auditReportHash": {
+      "type": ["string", "null"]
+    },
+    "deployedAtLedger": {
+      "type": ["integer", "null"]
+    },
+    "contracts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["id", "wasmHash"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^C[A-Z0-9]{55}$"
+          },
+          "wasmHash": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$"
+          }
+        }
+      }
+    },
+    "smartWallet": {
+      "type": ["object", "null"],
+      "properties": {
+        "wasmHash": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{64}$"
+        }
+      }
+    }
+  }
+}
