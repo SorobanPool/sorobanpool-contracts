@@ -92,3 +92,23 @@ fn roles_are_independent() {
     assert_eq!(c.reg.status(&user, &Role::Supplier), Status::Unregistered);
     assert!(c.reg.try_unsuspend(&c.admin, &user, &Role::Trader).is_err());
 }
+
+#[test]
+fn attestation_levels_are_bounded_per_role() {
+    let c = setup();
+    let attestor = Address::generate(&c.env);
+    c.cfg.set_attestor(&attestor, &true);
+    for (role, max) in [
+        (Role::Trader, 2u32),
+        (Role::Organizer, 2u32),
+        (Role::Supplier, 3u32),
+    ] {
+        let user = Address::generate(&c.env);
+        c.reg.register(&user, &role, &h(&c.env, 1), &None);
+        c.reg.attest(&attestor, &user, &role, &h(&c.env, 2), &max);
+        assert_eq!(c.reg.level(&user, &role), max);
+        let next = Address::generate(&c.env);
+        c.reg.register(&next, &role, &h(&c.env, 1), &None);
+        assert!(c.reg.try_attest(&attestor, &next, &role, &h(&c.env, 3), &(max + 1)).is_err());
+    }
+}

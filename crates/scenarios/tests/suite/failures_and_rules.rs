@@ -275,6 +275,50 @@ fn pause_blocks_new_activity_but_never_refunds() {
 }
 
 #[test]
+fn every_pause_scope_preserves_expiry_refunds() {
+    let scopes = [
+        symbol_short!("create"),
+        symbol_short!("commit"),
+        symbol_short!("accept"),
+        symbol_short!("all"),
+    ];
+    for scope in scopes {
+        let c = setup();
+        let pool = c.pool(0);
+        let trader = c.trader();
+        c.gb.commit(&trader, &pool, &10);
+        c.cfg.pause(&c.admin, &scope);
+        c.advance(3 * DAY);
+        c.gb.close(&pool);
+        assert_eq!(c.gb.claim_refund(&trader, &pool), 10 * USDC);
+    }
+}
+
+#[test]
+fn suspended_participants_keep_existing_pool_exits_but_not_new_activity() {
+    let c = setup();
+    let pool = c.pool(0);
+    let trader = c.trader();
+    c.gb.commit(&trader, &pool, &10);
+    c.reg.suspend(&c.admin, &trader, &Role::Trader, &symbol_short!("test"));
+    assert!(c.gb.try_commit(&c.trader(), &pool, &1).is_err());
+    c.advance(3 * DAY);
+    c.gb.close(&pool);
+    assert_eq!(c.gb.claim_refund(&trader, &pool), 10 * USDC);
+
+    let c = setup();
+    let pool = c.pool(0);
+    c.fill_standard(pool);
+    c.gb.accept(&c.supplier, &pool, &0);
+    c.reg.suspend(&c.admin, &c.supplier, &Role::Supplier, &symbol_short!("test"));
+    c.gb.dispatch(&c.supplier, &pool, &None);
+
+    let c = setup();
+    c.reg.suspend(&c.admin, &c.organizer, &Role::Organizer, &symbol_short!("test"));
+    assert!(c.gb.try_create_pool(&c.organizer, &c.terms(), &h(&c.env, 7), &0, &None, &(c.now() + DAY)).is_err());
+}
+
+#[test]
 fn cancel_rules() {
     let c = setup();
     let pool = c.pool(0);

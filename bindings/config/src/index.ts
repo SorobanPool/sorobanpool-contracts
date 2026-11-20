@@ -51,6 +51,20 @@ export interface ConfigSnapshot {
   paused_accept: boolean;
 }
 
+export interface HardCaps {
+  platform_fee_bp: u32;
+  max_organizer_fee_bp: u32;
+  max_fill_window_secs: u64;
+  arbitration_sla_secs: u64;
+  dispute_deposit_bp: u32;
+  supplier_advance_bp: u32;
+  basis_points: u32;
+  supplier_tier_count: u32;
+  organizer_tier_count: u32;
+  trader_tier_count: u32;
+  supplier_advance_tier_count: u32;
+}
+
 export interface Params {
   accept_window_secs: u64;
   advance_enabled: boolean;
@@ -121,6 +135,9 @@ export interface Client {
    * Construct and simulate a get_params transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
   get_params: (options?: MethodOptions) => Promise<AssembledTransaction<Params>>
+
+  /** Returns the immutable limits enforced by set_params. */
+  get_hard_caps: (options?: MethodOptions) => Promise<AssembledTransaction<HardCaps>>
 
   /**
    * Construct and simulate a is_arbiter transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
@@ -226,6 +243,7 @@ export class Client extends ContractClient {
         treasury: this.txFromJSON<string>,
         is_paused: this.txFromJSON<boolean>,
         get_params: this.txFromJSON<Params>,
+        get_hard_caps: this.txFromJSON<HardCaps>,
         is_arbiter: this.txFromJSON<boolean>,
         set_params: this.txFromJSON<null>,
         get_address: this.txFromJSON<string>,

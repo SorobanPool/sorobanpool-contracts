@@ -17,6 +17,23 @@ pub struct ConfigSnapshot {
     pub paused_accept: bool,
 }
 
+/// Read-only limits used by `set_params`. Keep this in sync with `caps`.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct HardCaps {
+    pub platform_fee_bp: u32,
+    pub max_organizer_fee_bp: u32,
+    pub max_fill_window_secs: u64,
+    pub arbitration_sla_secs: u64,
+    pub dispute_deposit_bp: u32,
+    pub supplier_advance_bp: u32,
+    pub basis_points: u32,
+    pub supplier_tier_count: u32,
+    pub organizer_tier_count: u32,
+    pub trader_tier_count: u32,
+    pub supplier_advance_tier_count: u32,
+}
+
 #[contracterror]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u32)]
@@ -97,15 +114,15 @@ fn validate(p: &Params) -> Result<(), Error> {
         && p.perishable_confirm_window_secs >= p.confirm_window_secs
         && p.arbitration_sla_secs > 0
         && p.early_release_weight_bp > 0
-        && p.early_release_weight_bp <= 10_000
+        && p.early_release_weight_bp <= caps::BASIS_POINTS
         && p.max_member_share_bp > 0
-        && p.max_member_share_bp <= 10_000
+        && p.max_member_share_bp <= caps::BASIS_POINTS
         && p.max_members_per_pool > 0
         && p.dispute_deposit_min >= 0
-        && p.supplier_tier_caps.len() == 4
-        && p.supplier_advance_bp.len() == 4
-        && p.organizer_tier_caps.len() == 3
-        && p.trader_tier_caps.len() == 3;
+        && p.supplier_tier_caps.len() == caps::SUPPLIER_TIER_COUNT
+        && p.supplier_advance_bp.len() == caps::SUPPLIER_ADVANCE_TIER_COUNT
+        && p.organizer_tier_caps.len() == caps::ORGANIZER_TIER_COUNT
+        && p.trader_tier_caps.len() == caps::TRADER_TIER_COUNT;
     if ok {
         Ok(())
     } else {
@@ -173,6 +190,22 @@ impl Config {
             .instance()
             .get(&Key::Params)
             .unwrap_or_else(|| panic_with_error!(&env, Error::ParamsInvalid))
+    }
+
+    pub fn get_hard_caps(_env: Env) -> HardCaps {
+        HardCaps {
+            platform_fee_bp: caps::PLATFORM_FEE_BP,
+            max_organizer_fee_bp: caps::ORGANIZER_FEE_BP,
+            max_fill_window_secs: caps::FILL_WINDOW_SECS,
+            arbitration_sla_secs: caps::ARBITRATION_SLA_SECS,
+            dispute_deposit_bp: caps::DISPUTE_DEPOSIT_BP,
+            supplier_advance_bp: caps::ADVANCE_BP,
+            basis_points: caps::BASIS_POINTS,
+            supplier_tier_count: caps::SUPPLIER_TIER_COUNT,
+            organizer_tier_count: caps::ORGANIZER_TIER_COUNT,
+            trader_tier_count: caps::TRADER_TIER_COUNT,
+            supplier_advance_tier_count: caps::SUPPLIER_ADVANCE_TIER_COUNT,
+        }
     }
 
     pub fn set_address(env: Env, key: Symbol, addr: Address) {

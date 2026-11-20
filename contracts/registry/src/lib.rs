@@ -7,7 +7,7 @@ use sp_common::clients::ConfigClient;
 use sp_common::events::emit;
 use sp_common::keys;
 use sp_common::ttl::bump_persistent;
-use sp_common::types::{Role, Status};
+use sp_common::types::{attestation, Role, Status};
 
 #[contracterror]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -127,7 +127,12 @@ impl Registry {
         if !cfg(&env).is_attestor(&attestor) {
             panic_with_error!(&env, Error::NotAttestor);
         }
-        if level == 0 {
+        let max_level = match role {
+            Role::Trader => attestation::TRADER_MAX_LEVEL,
+            Role::Organizer => attestation::ORGANIZER_MAX_LEVEL,
+            Role::Supplier => attestation::SUPPLIER_MAX_LEVEL,
+        };
+        if level == 0 || level > max_level {
             panic_with_error!(&env, Error::InvalidLevel);
         }
         let mut rec = load(&env, &user, &role);

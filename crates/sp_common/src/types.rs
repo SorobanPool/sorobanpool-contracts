@@ -197,6 +197,7 @@ pub struct RepStats {
 
 /// Hard caps enforced by `config` (changing them needs a contract upgrade).
 pub mod caps {
+    pub const BASIS_POINTS: u32 = 10_000;
     pub const PLATFORM_FEE_BP: u32 = 500;
     pub const ORGANIZER_FEE_BP: u32 = 200;
     pub const FILL_WINDOW_SECS: u64 = 14 * 24 * 3600;
@@ -204,4 +205,15 @@ pub mod caps {
     pub const ARBITRATION_SLA_SECS: u64 = 14 * 24 * 3600;
     pub const DISPUTE_DEPOSIT_BP: u32 = 500;
     pub const MAX_TIERS: u32 = 5;
+    pub const SUPPLIER_TIER_COUNT: u32 = 4;
+    pub const ORGANIZER_TIER_COUNT: u32 = 3;
+    pub const TRADER_TIER_COUNT: u32 = 3;
+    pub const SUPPLIER_ADVANCE_TIER_COUNT: u32 = 4;
+}
+
+/// Maximum verification level accepted for each registry role.
+pub mod attestation {
+    pub const TRADER_MAX_LEVEL: u32 = 2;
+    pub const ORGANIZER_MAX_LEVEL: u32 = 2;
+    pub const SUPPLIER_MAX_LEVEL: u32 = 3;
 }

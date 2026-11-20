@@ -41,3 +41,8 @@ scenario, property, fuzz and budget tests.
 
 Further reading: `state-machine.md`, `pricing-math.md`, `events.md`, `errors.md`, `storage-and-ttl.md`,
 `threat-model.md`, `decisions/`.
+# Configuration hard caps
+
+The config contract exposes `get_hard_caps` as a read-only view of every immutable
+limit enforced by `set_params`, including basis-point and tier-vector limits.
+Clients should use this view when validating settings instead of copying constants.
