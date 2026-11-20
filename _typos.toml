@@ -1,0 +1,48 @@
+[default]
+extend-ignore-re = [
+    "\"[0-9a-fA-F]{64}\"",
+    "\"[CG][A-Z0-9]{55}\""
+]
+
+[default.extend-words]
+# Stellar & Soroban terminology
+soroban = "soroban"
+Soroban = "Soroban"
+stroop = "stroop"
+stroops = "stroops"
+testnet = "testnet"
+mainnet = "mainnet"
+futurenet = "futurenet"
+strkey = "strkey"
+
+# Financial & protocol terminology
+bp = "bp"
+moq = "moq"
+MOQ = "MOQ"
+artefact = "artefact"
+artefacts = "artefacts"
+
+# Authentication & Passkey terminology
+passkey = "passkey"
+passkeys = "passkeys"
+webauthn = "webauthn"
+WebAuthn = "WebAuthn"
+secp = "secp"
+
+# Regional terminology (Nigeria / West Africa)
+pidgin = "pidgin"
+Pidgin = "Pidgin"
+Naira = "Naira"
+naira = "naira"
+NGN = "NGN"
+
+[files]
+extend-exclude = [
+    "target/",
+    "Cargo.lock",
+    "artifacts/",
+    "vectors/",
+    "deployments/*.json",
+    "bindings/**/dist/",
+    "bindings/**/package-lock.json"
+]
