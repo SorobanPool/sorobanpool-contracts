@@ -516,6 +516,7 @@ impl GroupBuy {
             diverted: 0,
             extra_refund_pool: 0,
             advance_paid: 0,
+            advance_enabled: params.advance_enabled,
             member_count: 0,
             listed_members: 0,
             picked_units: 0,
@@ -665,7 +666,7 @@ impl GroupBuy {
         pool.accepted_at = now(&env);
         let mut advance = 0i128;
         if advance_bp > 0 {
-            if !params.advance_enabled {
+            if !pool.advance_enabled {
                 fail::<()>(&env, Error::AdvanceDisabled);
             }
             let tier = reputation(&env).tier(&supplier, &Role::Supplier);

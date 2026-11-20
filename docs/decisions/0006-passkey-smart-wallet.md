@@ -23,9 +23,9 @@ implementation over writing one.
 
 ## Decision
 `contracts/smart_wallet` implements `CustomAccountInterface`:
-- signers: up to 10 passkeys (credential id -> uncompressed secp256r1 public key); any one authorises;
+- signers: up to 10 passkeys (credential id -> uncompressed secp256r1 public key); newly added signers become active after the wallet's configurable activation delay; any one active signer authorises;
   `add_signer` / `remove_signer` need the account's own authorisation; the last signer cannot be removed;
-- `__check_auth` looks up the passkey by credential id and calls
+- `__check_auth` rejects malformed client data and non-`webauthn.get` assertions through the verifier, then looks up the passkey by credential id and calls
   `stellar_accounts::verifiers::webauthn::verify` (v0.8.0), which checks the `webauthn.get` type, that the
   challenge is exactly the Soroban signature payload, user-present and user-verified flags, backup flags, and the
   secp256r1 signature over `sha256(authenticatorData || sha256(clientDataJSON))`;

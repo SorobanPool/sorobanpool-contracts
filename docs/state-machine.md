@@ -22,7 +22,7 @@ Supplier failures (`reject`, `fail_accept`, `fail_delivery`) record `failed` in 
 | `withdraw_commitment` | member | Open, ≥ lock (2h) before deadline, **must not lower the price tier** (ADR 0001) |
 | `close_early` | organizer | Open, total ≥ MOQ |
 | `close` | anyone | Open, now ≥ deadline → Filled if total ≥ MOQ else Expired |
-| `accept` | supplier | Filled, within accept window; optional advance (off by default) |
+| `accept` | supplier | Filled, within accept window; optional advance (off by default). Whether an advance is allowed is snapshotted when the pool is created, so later config changes do not affect that pool. |
 | `reject` | supplier | Filled → Failed |
 | `fail_accept` | anyone | Filled, accept window passed → Failed |
 | `dispatch` | supplier | Accepted |

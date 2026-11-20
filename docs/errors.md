@@ -82,6 +82,7 @@ Generated from the `Error` enums in each contract (namespaced: config 100s, regi
 | 502 | supplier_bond | NotGroupBuy |
 | 503 | supplier_bond | NotInitialised |
 | 504 | supplier_bond | ReleaseExceedsReserved |
+| 505 | supplier_bond | Overflow |
 | 600 | reputation | NotAuthorizedCaller |
 | 601 | reputation | UnknownEvent |
 | 602 | reputation | NotInitialised |
@@ -90,3 +91,4 @@ Generated from the `Error` enums in each contract (namespaced: config 100s, regi
 | 702 | smart_wallet | LastSigner |
 | 703 | smart_wallet | TooManySigners |
 | 704 | smart_wallet | BadCredentialId |
+| 705 | smart_wallet | SignerNotActive |

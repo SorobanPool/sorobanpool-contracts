@@ -84,6 +84,8 @@ pub struct Pool {
     /// Extra refund shared pro-rata among all members (RefundPool outcome).
     pub extra_refund_pool: i128,
     pub advance_paid: i128,
+    /// Whether supplier advances were enabled when this pool was created.
+    pub advance_enabled: bool,
     /// Members with units > 0.
     pub member_count: u32,
     /// Length of the member list, including withdrawn members.

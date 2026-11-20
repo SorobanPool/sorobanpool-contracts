@@ -31,6 +31,7 @@ pub enum Error {
     LastSigner = 702,
     TooManySigners = 703,
     BadCredentialId = 704,
+    SignerNotActive = 705,
 }
 
 /// What a client puts in the authorisation entry's signature: which passkey signed, and its assertion.
@@ -50,7 +51,10 @@ pub struct Signature {
 enum Key {
     /// credential id -> uncompressed secp256r1 public key (0x04 || x || y).
     Signer(Bytes),
+    /// credential id -> ledger at which the signer becomes active.
+    Activation(Bytes),
     Count,
+    ActivationDelay,
 }
 
 /// A handful of devices is plenty for a trader; the cap keeps storage and review simple.
@@ -63,6 +67,7 @@ const C: Symbol = symbol_short!("wallet");
 const DAY_LEDGERS: u32 = 17_280;
 const TTL_THRESHOLD: u32 = 30 * DAY_LEDGERS;
 const TTL_EXTEND_TO: u32 = 120 * DAY_LEDGERS;
+pub const DEFAULT_ACTIVATION_DELAY_LEDGERS: u32 = DAY_LEDGERS;
 
 fn signer_key(env: &Env, credential_id: &Bytes) -> Key {
     if credential_id.is_empty() || credential_id.len() > MAX_CREDENTIAL_ID {
@@ -75,7 +80,7 @@ fn count(env: &Env) -> u32 {
     env.storage().instance().get(&Key::Count).unwrap_or(0)
 }
 
-fn put_signer(env: &Env, credential_id: &Bytes, public_key: &BytesN<65>) {
+fn put_signer(env: &Env, credential_id: &Bytes, public_key: &BytesN<65>, activation_ledger: u32) {
     let k = signer_key(env, credential_id);
     if env.storage().persistent().has(&k) {
         panic_with_error!(env, Error::SignerExists);
@@ -85,11 +90,29 @@ fn put_signer(env: &Env, credential_id: &Bytes, public_key: &BytesN<65>) {
         panic_with_error!(env, Error::TooManySigners);
     }
     env.storage().persistent().set(&k, public_key);
+    let activation_key = Key::Activation(credential_id.clone());
+    env.storage().persistent().set(&activation_key, &activation_ledger);
+    env.storage()
+        .persistent()
+        .extend_ttl(&activation_key, TTL_THRESHOLD, TTL_EXTEND_TO);
     env.storage()
         .persistent()
         .extend_ttl(&k, TTL_THRESHOLD, TTL_EXTEND_TO);
     env.storage().instance().set(&Key::Count, &(n + 1));
-    emit(env, C, symbol_short!("key_add"), credential_id.clone(), ());
+    emit(
+        env,
+        C,
+        symbol_short!("key_add"),
+        credential_id.clone(),
+        activation_ledger,
+    );
+}
+
+fn activation_delay(env: &Env) -> u32 {
+    env.storage()
+        .instance()
+        .get(&Key::ActivationDelay)
+        .unwrap_or(DEFAULT_ACTIVATION_DELAY_LEDGERS)
 }
 
 #[contract]
@@ -99,13 +122,28 @@ pub struct SmartWallet;
 impl SmartWallet {
     /// Deployed by the SorobanPool sponsor with the user's first passkey (verified server-side at registration).
     pub fn __constructor(env: Env, credential_id: Bytes, public_key: BytesN<65>) {
-        put_signer(&env, &credential_id, &public_key);
+        env.storage()
+            .instance()
+            .set(&Key::ActivationDelay, &DEFAULT_ACTIVATION_DELAY_LEDGERS);
+        put_signer(&env, &credential_id, &public_key, env.ledger().sequence());
     }
 
     /// Adds another passkey (e.g. a new phone). Must be authorised by an existing passkey.
     pub fn add_signer(env: Env, credential_id: Bytes, public_key: BytesN<65>) {
         env.current_contract_address().require_auth();
-        put_signer(&env, &credential_id, &public_key);
+        let activation = env
+            .ledger()
+            .sequence()
+            .saturating_add(activation_delay(&env));
+        put_signer(&env, &credential_id, &public_key, activation);
+    }
+
+    /// Change the delay applied to future signers; existing pending signers keep their schedule.
+    pub fn set_activation_delay(env: Env, delay_ledgers: u32) {
+        env.current_contract_address().require_auth();
+        env.storage()
+            .instance()
+            .set(&Key::ActivationDelay, &delay_ledgers);
     }
 
     /// Removes a passkey (lost phone). The last passkey can never be removed, so the account cannot lock itself.
@@ -120,6 +158,9 @@ impl SmartWallet {
             panic_with_error!(&env, Error::LastSigner);
         }
         env.storage().persistent().remove(&k);
+        env.storage()
+            .persistent()
+            .remove(&Key::Activation(credential_id.clone()));
         env.storage().instance().set(&Key::Count, &(n - 1));
         emit(&env, C, symbol_short!("key_rm"), credential_id, ());
     }
@@ -156,6 +197,14 @@ impl CustomAccountInterface for SmartWallet {
             .persistent()
             .get(&k)
             .ok_or(Error::UnknownSigner)?;
+        let activation = env
+            .storage()
+            .persistent()
+            .get::<Key, u32>(&Key::Activation(signature.credential_id.clone()))
+            .unwrap_or(0);
+        if env.ledger().sequence() < activation {
+            return Err(Error::SignerNotActive);
+        }
         env.storage()
             .persistent()
             .extend_ttl(&k, TTL_THRESHOLD, TTL_EXTEND_TO);

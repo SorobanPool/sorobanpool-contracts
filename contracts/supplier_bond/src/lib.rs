@@ -17,6 +17,7 @@ pub enum Error {
     NotGroupBuy = 502,
     NotInitialised = 503,
     ReleaseExceedsReserved = 504,
+    Overflow = 505,
 }
 
 #[contracttype]
@@ -79,7 +80,10 @@ impl SupplierBond {
             panic_with_error!(&env, Error::InvalidAmount);
         }
         let mut b = load(&env, &supplier);
-        b.total += amount;
+        b.total = b
+            .total
+            .checked_add(amount)
+            .unwrap_or_else(|| panic_with_error!(&env, Error::Overflow));
         save(&env, &supplier, &b);
         token::Client::new(&env, &cfg(&env).usdc()).transfer(
             &supplier,

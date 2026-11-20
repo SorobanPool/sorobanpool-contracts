@@ -44,6 +44,21 @@ fn deposit_withdraw_free_only() {
 }
 
 #[test]
+fn tiny_amounts_round_trip_and_invalid_amounts_are_named_errors() {
+    let c = setup();
+    let before = c.usdc.balance(&c.supplier);
+    c.bond.deposit(&c.supplier, &1);
+    c.bond.withdraw(&c.supplier, &1);
+    assert_eq!(c.usdc.balance(&c.supplier), before);
+    assert!(c.bond.try_deposit(&c.supplier, &0).is_err());
+    assert!(c.bond.try_deposit(&c.supplier, &-1).is_err());
+    c.bond.deposit(&c.supplier, &1);
+    assert!(c.bond.try_deposit(&c.supplier, &i128::MAX).is_err());
+    assert!(c.bond.try_withdraw(&c.supplier, &0).is_err());
+    assert!(c.bond.try_withdraw(&c.supplier, &-1).is_err());
+}
+
+#[test]
 fn reserve_needs_free_bond_and_group_buy() {
     let c = setup();
     c.bond.deposit(&c.supplier, &100);

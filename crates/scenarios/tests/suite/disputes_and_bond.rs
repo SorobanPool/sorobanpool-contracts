@@ -247,6 +247,25 @@ fn enable_advance(c: &Ctx) {
 }
 
 #[test]
+fn advance_setting_is_snapshotted_when_pool_is_created() {
+    let c = setup();
+
+    let disabled_pool = c.pool(0);
+    enable_advance(&c);
+    c.fill_standard(disabled_pool);
+    c.bond.deposit(&c.supplier, &(100 * USDC));
+    assert!(c.gb.try_accept(&c.supplier, &disabled_pool, &1000).is_err());
+
+    let enabled_pool = c.pool(0);
+    let mut params = c.cfg.get_params();
+    params.advance_enabled = false;
+    c.cfg.set_params(&params);
+    c.fill_standard(enabled_pool);
+    c.gb.accept(&c.supplier, &enabled_pool, &1000);
+    assert!(c.gb.pool(&enabled_pool).advance_paid > 0);
+}
+
+#[test]
 fn advance_is_off_by_default_and_needs_bond() {
     let c = setup();
     let pool = c.pool(0);

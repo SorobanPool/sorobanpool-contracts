@@ -3,7 +3,10 @@ extern crate std;
 use super::*;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use p256::ecdsa::{signature::Signer, Signature as P256Sig, SigningKey};
-use soroban_sdk::{testutils::BytesN as _, vec, Env, IntoVal};
+use soroban_sdk::{
+    testutils::{BytesN as _, Ledger},
+    vec, Env, IntoVal,
+};
 use std::{format, vec::Vec as StdVec};
 
 const UP_UV: u8 = 0x05;
@@ -131,6 +134,15 @@ fn a_registration_ceremony_cannot_be_replayed_as_an_assertion() {
 }
 
 #[test]
+fn malformed_client_data_is_rejected() {
+    let (env, wallet, pk) = setup();
+    let payload = BytesN::<32>::random(&env);
+    let mut sig = pk.assert(&env, &payload.to_array(), UP_UV, "webauthn.get");
+    sig.client_data = Bytes::from_slice(&env, b"{");
+    assert!(host_rejects(&env, &wallet, &payload, sig));
+}
+
+#[test]
 fn tampered_authenticator_data_is_rejected() {
     let (env, wallet, pk) = setup();
     let payload = BytesN::<32>::random(&env);
@@ -173,6 +185,28 @@ fn signers_can_be_added_and_removed_but_never_the_last() {
         c.try_remove_signer(&pk.id),
         Err(Ok(Error::UnknownSigner.into()))
     );
+}
+
+#[test]
+fn added_signers_wait_for_activation_and_can_be_removed() {
+    let (env, wallet, _pk) = setup();
+    let c = SmartWalletClient::new(&env, &wallet);
+    env.mock_all_auths();
+    c.set_activation_delay(&10);
+    let phone2 = Passkey::new(&env, 8);
+    c.add_signer(&phone2.id, &phone2.public_key(&env));
+    let payload = BytesN::<32>::random(&env);
+    let sig = phone2.assert(&env, &payload.to_array(), UP_UV, "webauthn.get");
+    assert_eq!(
+        check(&env, &wallet, &payload, sig.clone()),
+        Err(Error::SignerNotActive)
+    );
+    c.remove_signer(&phone2.id);
+    assert_eq!(c.signer_count(), 1);
+
+    c.add_signer(&phone2.id, &phone2.public_key(&env));
+    env.ledger().set_sequence_number(env.ledger().sequence() + 10);
+    assert_eq!(check(&env, &wallet, &payload, sig), Ok(()));
 }
 
 #[test]
