@@ -39,3 +39,24 @@ Short symbols are limited to 9 characters, so some brief names are abbreviated. 
 | wallet | `key_add` / `key_rm` | credential id | `()` (emitted by each user's passkey wallet, not by a SorobanPool core contract; the indexer does not watch wallets) |
 
 Not yet emitted: `tier_changed` (reputation tier changes are carried inside `rep_upd`).
+
+## Exported Artifact Schema
+
+`artifacts/events.json` is exported by `scripts/export_artifacts.py` with top-level metadata:
+
+```json
+{
+  "schemaVersion": 1,
+  "contractsVersion": "0.1.0",
+  "events": [
+    {
+      "contract": "config",
+      "event": "params",
+      "key": "updated",
+      "data": "platform_fee_bp"
+    }
+  ]
+}
+```
+
+Consumers (e.g. backend event processors and indexers) verify `schemaVersion` and `contractsVersion` against deployed contract builds.
