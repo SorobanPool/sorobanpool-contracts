@@ -32,6 +32,16 @@ for line in open(os.path.join(root, "docs/events.md")):
 def emitted_from_source():
     """(contract_symbol, event_symbol) pairs the contracts really emit, parsed from emit(env, C, <event>, ...) calls."""
     out = set()
+    # Map event constants from sp_common/src/events.rs
+    const_map = {}
+    ev_src = open(os.path.join(root, "crates/sp_common/src/events.rs")).read()
+    for m in re.finditer(r'pub const (\w+):\s*Symbol\s*=\s*symbol_short!\("(\w+)"\);', ev_src):
+        const_map[m.group(1)] = m.group(2)
+    for m in re.finditer(r'pub const (\w+_STR):\s*&str\s*=\s*"(\w+)";', ev_src):
+        const_map[m.group(1)] = m.group(2)
+    for m in re.finditer(r'pub fn (\w+)\([^)]*\)\s*->\s*Symbol\s*\{\s*Symbol::new\([^,]+,\s*(\w+)\)', ev_src):
+        const_map[m.group(1)] = const_map.get(m.group(2), m.group(1))
+
     for f in sorted(glob.glob(os.path.join(root, "contracts/*/src/lib.rs"))):
         src = open(f).read()
         m = re.search(r'const C: Symbol = symbol_short!\("(\w+)"\)', src)
@@ -39,14 +49,28 @@ def emitted_from_source():
             continue
         contract = m.group(1)
         for call in re.finditer(r"emit\(\s*&?env,\s*C,\s*([^,]+),", src):
-            arg = call.group(1)
+            arg = call.group(1).strip()
             names = re.findall(r'symbol_short!\("(\w+)"\)', arg)
-            if not names and re.fullmatch(r"\w+", arg.strip()):
-                # a variable, e.g. `let ev = if .. { symbol_short!("a") } else { symbol_short!("b") }`
-                decl = re.search(r"let\s+%s\s*=([^;]+);" % re.escape(arg.strip()), src)
-                names = re.findall(r'symbol_short!\("(\w+)"\)', decl.group(1)) if decl else []
             if not names:
-                raise SystemExit(f"cannot determine event name in {f}: emit(..., {arg.strip()}, ...)")
+                names = re.findall(r'Symbol::new\([^,]+,\s*"(\w+)"\)', arg)
+            if not names:
+                fn_match = re.search(r'(?:events::)?(\w+)\(&env\)', arg)
+                if fn_match and fn_match.group(1) in const_map:
+                    names = [const_map[fn_match.group(1)]]
+            if not names:
+                c_match = re.search(r'(?:events::)?([A-Z0-9_]+)', arg)
+                if c_match and c_match.group(1) in const_map:
+                    names = [const_map[c_match.group(1)]]
+            if not names and re.fullmatch(r"\w+", arg):
+                # a variable, e.g. `let ev = if .. { events::A } else { events::B }`
+                decl = re.search(r"let\s+%s\s*=([^;]+);" % re.escape(arg), src)
+                if decl:
+                    decl_str = decl.group(1)
+                    names = re.findall(r'symbol_short!\("(\w+)"\)', decl_str)
+                    if not names:
+                        names = [const_map[c] for c in re.findall(r'(?:events::)?([A-Z0-9_]+)', decl_str) if c in const_map]
+            if not names:
+                raise SystemExit(f"cannot determine event name in {f}: emit(..., {arg}, ...)")
             for n in names:
                 out.add((contract, n))
     return out
@@ -117,6 +141,8 @@ event_definitions = {
     ("config", "paused"): ("string", "{ caller: string }"),
     ("config", "unpaused"): ("string", "{ caller: string }"),
     ("config", "upgraded"): ("'config'", "{ wasm_hash: string }"),
+    ("config", "admin_proposed"): ("string", "{ new_admin: string }"),
+    ("config", "admin_changed"): ("string", "{ new_admin: string; old_admin: string }"),
     ("registry", "user_reg"): ("string", "{ role: string }"),
     ("registry", "user_att"): ("string", "{ role: string; level: number }"),
     ("registry", "user_rev"): ("string", "{ role: string; reason: string }"),

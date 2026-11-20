@@ -29,6 +29,20 @@ export interface ConfigUpgradedEvent {
   data: { wasm_hash: string };
 }
 
+export interface ConfigAdminProposedEvent {
+  contract: 'config';
+  event: 'admin_proposed';
+  key: string;
+  data: { new_admin: string };
+}
+
+export interface ConfigAdminChangedEvent {
+  contract: 'config';
+  event: 'admin_changed';
+  key: string;
+  data: { new_admin: string; old_admin: string };
+}
+
 export interface RegistryUserRegEvent {
   contract: 'registry';
   event: 'user_reg';
@@ -272,6 +286,8 @@ export type ContractEvent =
   | ConfigPausedEvent
   | ConfigUnpausedEvent
   | ConfigUpgradedEvent
+  | ConfigAdminProposedEvent
+  | ConfigAdminChangedEvent
   | RegistryUserRegEvent
   | RegistryUserAttEvent
   | RegistryUserRevEvent

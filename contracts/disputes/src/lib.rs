@@ -4,7 +4,7 @@ use soroban_sdk::{
     Address, BytesN, Env, Symbol, Vec,
 };
 use sp_common::clients::{ConfigClient, GroupBuyClient, ReputationClient};
-use sp_common::events::emit;
+use sp_common::events::{self, emit};
 use sp_common::keys;
 use sp_common::math::{bp_of, mul_div_floor};
 use sp_common::ttl::bump_persistent;
@@ -262,7 +262,7 @@ impl Disputes {
         emit(
             &env,
             C,
-            symbol_short!("d_open"),
+            events::D_OPEN,
             id,
             (pool_id, opener, claimed_amount),
         );
@@ -288,13 +288,7 @@ impl Disputes {
         }
         d.evidence.push_back(evidence.clone());
         save(&env, &d);
-        emit(
-            &env,
-            C,
-            symbol_short!("d_evid"),
-            dispute_id,
-            (party, evidence),
-        );
+        emit(&env, C, events::D_EVID, dispute_id, (party, evidence));
     }
 
     pub fn resolve(
@@ -354,7 +348,7 @@ impl Disputes {
         emit(
             &env,
             C,
-            symbol_short!("d_resolve"),
+            events::D_RESOLVE,
             dispute_id,
             (arbiter, reasoning_hash),
         );
@@ -378,7 +372,7 @@ impl Disputes {
             let units = d.claimed_units;
             finish(&env, &mut d, side, Outcome::RefundMember(units), a, 0, true);
         }
-        emit(&env, C, symbol_short!("d_timeout"), dispute_id, true);
+        emit(&env, C, events::D_TIMEOUT, dispute_id, true);
     }
 
     pub fn dispute(env: Env, id: u64) -> Dispute {

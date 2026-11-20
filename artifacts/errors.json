@@ -30,6 +30,16 @@
     "name": "NoGuardian"
   },
   {
+    "code": 106,
+    "contract": "config",
+    "name": "NoAdminProposal"
+  },
+  {
+    "code": 107,
+    "contract": "config",
+    "name": "NotProposedAdmin"
+  },
+  {
     "code": 200,
     "contract": "registry",
     "name": "AlreadyRegistered"
@@ -92,7 +102,7 @@
   {
     "code": 305,
     "contract": "group_buy",
-    "name": "BadDeadline"
+    "name": "DeadlineInPast"
   },
   {
     "code": 306,
@@ -293,6 +303,11 @@
     "code": 345,
     "contract": "group_buy",
     "name": "SupplierIsParty"
+  },
+  {
+    "code": 346,
+    "contract": "group_buy",
+    "name": "DeadlineTooFar"
   },
   {
     "code": 400,

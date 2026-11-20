@@ -4,7 +4,7 @@ use soroban_sdk::{
     Address, BytesN, Env, Symbol, Vec,
 };
 use sp_common::clients::{BondClient, ConfigClient, RegistryClient, ReputationClient};
-use sp_common::events::emit;
+use sp_common::events::{self, emit};
 use sp_common::keys;
 use sp_common::math::{
     bp_of, ceiling_price, cumulative_alloc, final_unit_price, tier_index, validate_tiers,
@@ -180,7 +180,7 @@ fn fill(env: &Env, pool: &mut Pool) {
     emit(
         env,
         C,
-        symbol_short!("filled"),
+        events::FILLED,
         pool.id,
         (pool.total_units, pool.final_price),
     );
@@ -391,15 +391,15 @@ fn add_units(env: &Env, member: &Address, pool_id: u64, units: u32, is_increase:
         emit(
             env,
             C,
-            symbol_short!("tier_up"),
+            events::TIER_UP,
             pool_id,
             (after_tier.unwrap_or(0), new_total),
         );
     }
     let ev = if is_increase {
-        symbol_short!("commit_up")
+        events::COMMIT_UP
     } else {
-        symbol_short!("committed")
+        events::COMMITTED
     };
     emit(env, C, ev, pool_id, (member.clone(), units, amount));
     if new_total == pool.terms.max_units {
@@ -532,7 +532,7 @@ impl GroupBuy {
         emit(
             &env,
             C,
-            symbol_short!("pool_new"),
+            events::POOL_NEW,
             id,
             (organizer, terms.supplier, terms.offer_hash, hub_hash),
         );
@@ -559,7 +559,7 @@ impl GroupBuy {
         }
         end_refundable(&env, &mut pool, PoolState::Cancelled, false);
         save_pool(&env, &pool);
-        emit(&env, C, symbol_short!("cancelled"), pool_id, caller);
+        emit(&env, C, events::CANCELLED, pool_id, caller);
     }
 
     pub fn commit(env: Env, member: Address, pool_id: u64, units: u32) -> i128 {
@@ -605,7 +605,7 @@ impl GroupBuy {
         emit(
             &env,
             C,
-            symbol_short!("withdrawn"),
+            events::WITHDRAWN,
             pool_id,
             (member.clone(), refund),
         );
@@ -641,7 +641,7 @@ impl GroupBuy {
             fill(&env, &mut pool);
         } else {
             end_refundable(&env, &mut pool, PoolState::Expired, false);
-            emit(&env, C, symbol_short!("expired"), pool_id, pool.total_units);
+            emit(&env, C, events::EXPIRED, pool_id, pool.total_units);
         }
         save_pool(&env, &pool);
     }
@@ -682,15 +682,9 @@ impl GroupBuy {
             pool.escrow_balance -= advance;
         }
         save_pool(&env, &pool);
-        emit(
-            &env,
-            C,
-            symbol_short!("accepted"),
-            pool_id,
-            supplier.clone(),
-        );
+        emit(&env, C, events::ACCEPTED, pool_id, supplier.clone());
         if advance > 0 {
-            emit(&env, C, symbol_short!("advance"), pool_id, advance);
+            emit(&env, C, events::ADVANCE, pool_id, advance);
             usdc(&env).transfer(&me(&env), &supplier, &advance);
         }
     }
@@ -706,7 +700,7 @@ impl GroupBuy {
         }
         end_refundable(&env, &mut pool, PoolState::Failed, true);
         save_pool(&env, &pool);
-        emit(&env, C, symbol_short!("rejected"), pool_id, supplier);
+        emit(&env, C, events::REJECTED, pool_id, supplier);
     }
 
     /// Permissionless after the accept window.
@@ -721,13 +715,7 @@ impl GroupBuy {
         }
         end_refundable(&env, &mut pool, PoolState::Failed, true);
         save_pool(&env, &pool);
-        emit(
-            &env,
-            C,
-            symbol_short!("failed"),
-            pool_id,
-            symbol_short!("no_accept"),
-        );
+        emit(&env, C, events::FAILED, pool_id, symbol_short!("no_accept"));
     }
 
     pub fn dispatch(env: Env, supplier: Address, pool_id: u64, waybill_hash: Option<BytesN<32>>) {
@@ -742,7 +730,7 @@ impl GroupBuy {
         pool.state = PoolState::Dispatched;
         pool.dispatched_at = now(&env);
         save_pool(&env, &pool);
-        emit(&env, C, symbol_short!("dispatch"), pool_id, waybill_hash);
+        emit(&env, C, events::DISPATCH, pool_id, waybill_hash);
     }
 
     /// Permissionless after `accepted_at + lead_time + grace`.
@@ -757,13 +745,7 @@ impl GroupBuy {
         }
         end_refundable(&env, &mut pool, PoolState::Failed, true);
         save_pool(&env, &pool);
-        emit(
-            &env,
-            C,
-            symbol_short!("failed"),
-            pool_id,
-            symbol_short!("no_deliv"),
-        );
+        emit(&env, C, events::FAILED, pool_id, symbol_short!("no_deliv"));
     }
 
     pub fn confirm_delivery(
@@ -803,7 +785,7 @@ impl GroupBuy {
         emit(
             &env,
             C,
-            symbol_short!("delivered"),
+            events::DELIVERED,
             pool_id,
             (received_units, evidence),
         );
@@ -817,7 +799,7 @@ impl GroupBuy {
             emit(
                 &env,
                 C,
-                symbol_short!("shortfall"),
+                events::SHORTFALL,
                 pool_id,
                 pool.total_units - received_units,
             );
@@ -869,7 +851,7 @@ impl GroupBuy {
             emit(
                 &env,
                 C,
-                symbol_short!("delivered"),
+                events::DELIVERED,
                 pool_id,
                 (pool.total_units, BytesN::from_array(&env, &[0u8; 32])),
             );
@@ -915,13 +897,7 @@ impl GroupBuy {
         }
         save_pool(&env, &pool);
         if pool.alloc_done && !was_done {
-            emit(
-                &env,
-                C,
-                symbol_short!("alloc_ok"),
-                pool_id,
-                pool.received_units,
-            );
+            emit(&env, C, events::ALLOC_OK, pool_id, pool.received_units);
         }
         pool.alloc_done
     }
@@ -946,7 +922,7 @@ impl GroupBuy {
         save_pool(&env, &pool);
         rep(&env, &member, Role::Trader, symbol_short!("pickup"));
         rep(&env, &member, Role::Trader, symbol_short!("settled"));
-        emit(&env, C, symbol_short!("pickup"), pool_id, member);
+        emit(&env, C, events::PICKUP, pool_id, member);
     }
 
     /// Permissionless once the confirmation window has closed, or early when members holding
@@ -985,13 +961,7 @@ impl GroupBuy {
         pool.owed_total = pool.total_paid - gross + pool.diverted;
         pool.escrow_balance -= supplier_net + plat + org;
         save_pool(&env, &pool);
-        emit(
-            &env,
-            C,
-            symbol_short!("settled"),
-            pool_id,
-            (supplier_net, plat, org),
-        );
+        emit(&env, C, events::SETTLED, pool_id, (supplier_net, plat, org));
         if advance > 0 {
             bond(&env).release_advance(&me(&env), &pool.terms.supplier, &advance);
         }
@@ -1029,13 +999,7 @@ impl GroupBuy {
         pool.refunds_paid += due;
         save_commit(&env, pool_id, &c);
         save_pool(&env, &pool);
-        emit(
-            &env,
-            C,
-            symbol_short!("refund"),
-            pool_id,
-            (member.clone(), due),
-        );
+        emit(&env, C, events::REFUND, pool_id, (member.clone(), due));
         usdc(&env).transfer(&me(&env), &member, &due);
         due
     }
@@ -1060,7 +1024,7 @@ impl GroupBuy {
                     pool.refunds_paid += due;
                     save_commit(&env, pool_id, &c);
                     usdc(&env).transfer(&me(&env), &m, &due);
-                    emit(&env, C, symbol_short!("refund"), pool_id, (m, due));
+                    emit(&env, C, events::REFUND, pool_id, (m, due));
                 }
             }
         }
@@ -1268,6 +1232,7 @@ impl GroupBuy {
         let remaining_members = pool.listed_members.saturating_sub(pool.refund_cursor);
         let remaining_amount = (pool.owed_total - pool.refunds_paid).max(0);
         (remaining_members, remaining_amount)
+    }
     /// Read-only escrow invariant check for external monitoring (issue #143).
     ///
     /// Returns `(expected, actual)` where:

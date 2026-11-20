@@ -4,7 +4,7 @@ use soroban_sdk::{
     Address, Env, Symbol,
 };
 use sp_common::clients::ConfigClient;
-use sp_common::events::emit;
+use sp_common::events::{self, emit};
 use sp_common::keys;
 use sp_common::ttl::bump_persistent;
 
@@ -86,7 +86,7 @@ impl SupplierBond {
             env.current_contract_address(),
             &amount,
         );
-        emit(&env, C, symbol_short!("deposit"), supplier, amount);
+        emit(&env, C, events::DEPOSIT, supplier, amount);
     }
 
     /// Only the free part of the bond (total minus outstanding advances).
@@ -106,7 +106,7 @@ impl SupplierBond {
             &supplier,
             &amount,
         );
-        emit(&env, C, symbol_short!("withdraw"), supplier, amount);
+        emit(&env, C, events::WITHDRAW, supplier, amount);
     }
 
     pub fn reserve_for_advance(env: Env, caller: Address, supplier: Address, amount: i128) {
@@ -149,7 +149,7 @@ impl SupplierBond {
                 &slashed,
             );
         }
-        emit(&env, C, symbol_short!("slashed"), supplier, slashed);
+        emit(&env, C, events::SLASHED, supplier, slashed);
         slashed
     }
 
