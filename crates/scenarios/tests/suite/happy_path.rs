@@ -75,7 +75,7 @@ fn push_refunds_pays_everyone_in_batches() {
 fn refunds_pending_decrements_with_each_push_batch() {
     let c = setup();
     let pool = c.pool(0);
-    let t = c.fill_standard(pool);
+    let _t = c.fill_standard(pool);
     c.deliver(pool, 420);
     c.advance(48 * 3600);
     c.gb.settle(&pool);

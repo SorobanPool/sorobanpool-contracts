@@ -27,6 +27,8 @@ pub enum Error {
     ParamsExceedHardCap = 103,
     AddressNotSet = 104,
     NoGuardian = 105,
+    TooManyArbiters = 106,
+    TooManyAttestors = 107,
 }
 
 #[contracttype]
@@ -38,10 +40,16 @@ enum Key {
     Guardian,
     Addr(Symbol),
     Attestor(Address),
+    AttestorList,
     Arbiter(Address),
+    ArbiterList,
     Category(Symbol),
     Paused(Symbol),
 }
+
+/// Bounded maximum sizes for enumerable admin lists in instance storage.
+pub const MAX_ARBITERS: u32 = 20;
+pub const MAX_ATTESTORS: u32 = 20;
 
 const C: Symbol = symbol_short!("config");
 
@@ -189,7 +197,36 @@ impl Config {
 
     pub fn set_attestor(env: Env, a: Address, enabled: bool) {
         require_admin(&env);
-        env.storage().persistent().set(&Key::Attestor(a), &enabled);
+        env.storage()
+            .persistent()
+            .set(&Key::Attestor(a.clone()), &enabled);
+
+        let mut list: Vec<Address> = env
+            .storage()
+            .instance()
+            .get(&Key::AttestorList)
+            .unwrap_or_else(|| Vec::new(&env));
+
+        let mut found_idx: Option<u32> = None;
+        for i in 0..list.len() {
+            if list.get(i).unwrap() == a {
+                found_idx = Some(i);
+                break;
+            }
+        }
+
+        if enabled {
+            if found_idx.is_none() {
+                if list.len() >= MAX_ATTESTORS {
+                    panic_with_error!(&env, Error::TooManyAttestors);
+                }
+                list.push_back(a);
+                env.storage().instance().set(&Key::AttestorList, &list);
+            }
+        } else if let Some(idx) = found_idx {
+            list.remove(idx);
+            env.storage().instance().set(&Key::AttestorList, &list);
+        }
     }
     pub fn is_attestor(env: Env, a: Address) -> bool {
         env.storage()
@@ -197,16 +234,57 @@ impl Config {
             .get(&Key::Attestor(a))
             .unwrap_or(false)
     }
+    pub fn attestors(env: Env) -> Vec<Address> {
+        env.storage()
+            .instance()
+            .get(&Key::AttestorList)
+            .unwrap_or_else(|| Vec::new(&env))
+    }
 
     pub fn set_arbiter(env: Env, a: Address, enabled: bool) {
         require_admin(&env);
-        env.storage().persistent().set(&Key::Arbiter(a), &enabled);
+        env.storage()
+            .persistent()
+            .set(&Key::Arbiter(a.clone()), &enabled);
+
+        let mut list: Vec<Address> = env
+            .storage()
+            .instance()
+            .get(&Key::ArbiterList)
+            .unwrap_or_else(|| Vec::new(&env));
+
+        let mut found_idx: Option<u32> = None;
+        for i in 0..list.len() {
+            if list.get(i).unwrap() == a {
+                found_idx = Some(i);
+                break;
+            }
+        }
+
+        if enabled {
+            if found_idx.is_none() {
+                if list.len() >= MAX_ARBITERS {
+                    panic_with_error!(&env, Error::TooManyArbiters);
+                }
+                list.push_back(a);
+                env.storage().instance().set(&Key::ArbiterList, &list);
+            }
+        } else if let Some(idx) = found_idx {
+            list.remove(idx);
+            env.storage().instance().set(&Key::ArbiterList, &list);
+        }
     }
     pub fn is_arbiter(env: Env, a: Address) -> bool {
         env.storage()
             .persistent()
             .get(&Key::Arbiter(a))
             .unwrap_or(false)
+    }
+    pub fn arbiters(env: Env) -> Vec<Address> {
+        env.storage()
+            .instance()
+            .get(&Key::ArbiterList)
+            .unwrap_or_else(|| Vec::new(&env))
     }
 
     pub fn set_category(env: Env, cat: Symbol, allowed: bool) {

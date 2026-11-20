@@ -22,8 +22,8 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace   # includes the pricing-vectors staleness check
       - run: stellar contract build
-      - name: wasm size report
-        run: ls -l target/wasm32v1-none/release/*.wasm
+      - name: wasm size report and budget check
+        run: python3 scripts/wasm_sizes.py
       - name: export errors.json / events.json
         run: python3 scripts/export_artifacts.py
       - uses: actions/upload-artifact@v7

@@ -1,5 +1,6 @@
 //! Regression tests for fund-safety findings from the November 2026 internal review (brief section 15, M6).
 use scenarios::*;
+use soroban_sdk::testutils::Address as _;
 use soroban_sdk::Address;
 use sp_common::types::{DisputeReason, Outcome, PoolState, Role, Status};
 
@@ -178,7 +179,8 @@ fn revoked_attestor_cannot_attest_but_existing_records_remain() {
 
     // 4. The disabled attestor must not be able to attest a new user.
     let new_user = Address::generate(&c.env);
-    c.reg.register(&new_user, &Role::Trader, &h(&c.env, 1), &None);
+    c.reg
+        .register(&new_user, &Role::Trader, &h(&c.env, 1), &None);
     let result = c
         .reg
         .try_attest(&c.attestor, &new_user, &Role::Trader, &h(&c.env, 2), &1);

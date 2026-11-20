@@ -1,0 +1,12 @@
+{
+  "max_growth_pct": 5.0,
+  "budgets": {
+    "config.wasm": 70000,
+    "disputes.wasm": 80000,
+    "group_buy.wasm": 180000,
+    "registry.wasm": 50000,
+    "reputation.wasm": 50000,
+    "smart_wallet.wasm": 150000,
+    "supplier_bond.wasm": 60000
+  }
+}
