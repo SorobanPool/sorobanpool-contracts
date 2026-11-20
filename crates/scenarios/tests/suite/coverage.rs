@@ -176,8 +176,12 @@ fn sweep_dust_blocked_while_dispute_unresolved_then_zero_after_resolution() {
     );
 
     // Resolve the dispute in the member's favour (partial credit).
-    c.dis
-        .resolve(&c.arbiter, &dispute_id, &Outcome::RefundMember(5), &h(&c.env, 4));
+    c.dis.resolve(
+        &c.arbiter,
+        &dispute_id,
+        &Outcome::RefundMember(5),
+        &h(&c.env, 4),
+    );
     assert_eq!(
         c.gb.pool(&pool).frozen_amount,
         0,
@@ -189,7 +193,10 @@ fn sweep_dust_blocked_while_dispute_unresolved_then_zero_after_resolution() {
     for m in &t {
         total_refunded += c.gb.claim_refund(m, &pool);
     }
-    assert!(total_refunded > 0, "members must receive refunds after settlement");
+    assert!(
+        total_refunded > 0,
+        "members must receive refunds after settlement"
+    );
 
     // Now sweep is allowed and moves only true rounding dust (may be zero).
     let dust = c.gb.sweep_dust(&pool);
@@ -216,8 +223,12 @@ fn repeated_sweep_dust_moves_zero() {
     let dispute_id = c
         .dis
         .open(&t[1], &pool, &DisputeReason::Short, &5, &h(&c.env, 3));
-    c.dis
-        .resolve(&c.arbiter, &dispute_id, &Outcome::RefundMember(5), &h(&c.env, 4));
+    c.dis.resolve(
+        &c.arbiter,
+        &dispute_id,
+        &Outcome::RefundMember(5),
+        &h(&c.env, 4),
+    );
 
     c.advance(48 * 3600);
     c.gb.settle(&pool);
@@ -232,11 +243,11 @@ fn repeated_sweep_dust_moves_zero() {
     assert!(first >= 0);
 
     // Second sweep on the same pool: must return 0 and not transfer any tokens.
-    let treasury_before = c.bal(c.cfg.treasury());
+    let treasury_before = c.bal(&c.cfg.treasury());
     let second = c.gb.sweep_dust(&pool);
     assert_eq!(second, 0, "second sweep must return zero");
     assert_eq!(
-        c.bal(c.cfg.treasury()),
+        c.bal(&c.cfg.treasury()),
         treasury_before,
         "second sweep must not move any tokens to treasury"
     );

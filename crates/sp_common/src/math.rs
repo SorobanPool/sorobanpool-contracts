@@ -157,4 +157,68 @@ mod test {
         assert_eq!(mul_div_floor(i128::MAX, 2, 1), None);
         assert_eq!(bp_of(10_000, 150), Some(150));
     }
+
+    #[test]
+    fn overflow_tests_at_extremes() {
+        // mul_div_floor near i128::MAX and extreme boundaries
+        assert_eq!(mul_div_floor(i128::MAX, 2, 1), None);
+        assert_eq!(mul_div_floor(i128::MAX, i128::MAX, 1), None);
+        assert_eq!(mul_div_floor(i128::MIN, -1, 1), None);
+        assert_eq!(mul_div_floor(i128::MAX, 1, 0), None);
+        assert_eq!(mul_div_floor(i128::MAX, 0, 1), Some(0));
+        assert_eq!(mul_div_floor(i128::MAX, 1, 1), Some(i128::MAX));
+
+        // bp_of overflow checks
+        assert_eq!(bp_of(i128::MAX, 2), None);
+        assert_eq!(bp_of(i128::MAX, 10_000), None);
+        assert_eq!(bp_of(i128::MIN, 100), None);
+        assert_eq!(bp_of(i128::MAX / 10_000, 10_000), Some(i128::MAX / 10_000));
+
+        // cumulative_alloc near limits
+        assert_eq!(cumulative_alloc(u32::MAX, 1, 1, 0), None);
+        assert_eq!(
+            cumulative_alloc(u32::MAX, u32::MAX, u32::MAX, u32::MAX),
+            None
+        );
+        assert!(cumulative_alloc(u32::MAX - 100, 100, 50, u32::MAX).is_some());
+
+        // tier price lookups at i128::MAX
+        let env = Env::default();
+        let extreme_tiers = vec![
+            &env,
+            Tier {
+                min_units: 1,
+                unit_price: i128::MAX,
+            },
+            Tier {
+                min_units: 100,
+                unit_price: i128::MAX - 1,
+            },
+        ];
+        assert_eq!(ceiling_price(&extreme_tiers, 0), Some(i128::MAX));
+        assert_eq!(
+            final_unit_price(&extreme_tiers, u32::MAX),
+            Some(i128::MAX - 1)
+        );
+        assert_eq!(tier_index(&extreme_tiers, u32::MAX), Some(1));
+        assert!(validate_tiers(&extreme_tiers, 1, u32::MAX));
+
+        let extreme_slice = [
+            Tier {
+                min_units: 1,
+                unit_price: i128::MAX,
+            },
+            Tier {
+                min_units: 100,
+                unit_price: i128::MAX - 1,
+            },
+        ];
+        assert_eq!(ceiling_price_slice(&extreme_slice, 0), Some(i128::MAX));
+        assert_eq!(
+            final_unit_price_slice(&extreme_slice, u32::MAX),
+            Some(i128::MAX - 1)
+        );
+        assert_eq!(tier_index_slice(&extreme_slice, u32::MAX), Some(1));
+        assert!(validate_tiers_slice(&extreme_slice, 1, u32::MAX));
+    }
 }
