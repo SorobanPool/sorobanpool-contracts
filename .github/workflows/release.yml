@@ -1,0 +1,62 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish release assets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.98.1
+          targets: wasm32v1-none
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cache stellar-cli
+        id: cache-stellar
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/stellar
+          key: stellar-cli-28.1.0-linux-gnu
+
+      - name: install stellar-cli
+        if: steps.cache-stellar.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL https://github.com/stellar/stellar-cli/releases/download/v28.1.0/stellar-cli-28.1.0-x86_64-unknown-linux-gnu.tar.gz | sudo tar xz -C /usr/local/bin stellar
+
+      - name: build contracts
+        run: scripts/build.sh
+
+      - name: export artifacts
+        run: python3 scripts/export_artifacts.py
+
+      - name: generate SHA256SUMS
+        run: |
+          cd target/wasm32v1-none/release
+          sha256sum *.wasm > SHA256SUMS
+          cd -
+          sha256sum artifacts/errors.json artifacts/events.json vectors/pricing-vectors.json >> target/wasm32v1-none/release/SHA256SUMS
+          cat target/wasm32v1-none/release/SHA256SUMS
+
+      - name: create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            target/wasm32v1-none/release/*.wasm
+            target/wasm32v1-none/release/SHA256SUMS
+            artifacts/errors.json
+            artifacts/events.json
+            vectors/pricing-vectors.json

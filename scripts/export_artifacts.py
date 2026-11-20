@@ -3,11 +3,32 @@
 bindings/errors.ts (TypeScript error code constants and types), and bindings/events.ts
 (TypeScript event payload interfaces).
 Consumed by the frontend error map, SDK consumers, and backend indexer fixtures."""
-import glob, json, os, re
+import glob, json, os, re, subprocess
 
 root = os.path.join(os.path.dirname(__file__), "..")
 os.makedirs(os.path.join(root, "artifacts"), exist_ok=True)
 os.makedirs(os.path.join(root, "bindings"), exist_ok=True)
+
+def get_contracts_version() -> str:
+    """Returns the git short sha or workspace version from Cargo.toml."""
+    try:
+        out = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=root,
+            stderr=subprocess.DEVNULL,
+        ).decode().strip()
+        if out:
+            return out
+    except Exception:
+        pass
+    cargo_path = os.path.join(root, "Cargo.toml")
+    if os.path.exists(cargo_path):
+        m = re.search(r'\[workspace\.package\][\s\S]*?version\s*=\s*"([^"]+)"', open(cargo_path).read())
+        if m:
+            return m.group(1)
+    return "0.1.0"
+
+contracts_version = get_contracts_version()
 
 errors = []
 for f in sorted(glob.glob(os.path.join(root, "contracts/*/src/lib.rs"))):
@@ -20,7 +41,13 @@ for f in sorted(glob.glob(os.path.join(root, "contracts/*/src/lib.rs"))):
         if mm:
             errors.append({"code": int(mm.group(2)), "contract": contract, "name": mm.group(1)})
 errors.sort(key=lambda e: e["code"])
-json.dump(errors, open(os.path.join(root, "artifacts/errors.json"), "w"), indent=2)
+
+errors_payload = {
+    "schemaVersion": 1,
+    "contractsVersion": contracts_version,
+    "errors": errors,
+}
+json.dump(errors_payload, open(os.path.join(root, "artifacts/errors.json"), "w"), indent=2)
 
 events = []
 for line in open(os.path.join(root, "docs/events.md")):
@@ -61,7 +88,12 @@ for c, e in sorted(documented - emitted):
 if problems:
     raise SystemExit("docs/events.md is out of sync with the contracts:\n  " + "\n  ".join(problems))
 
-json.dump(events, open(os.path.join(root, "artifacts/events.json"), "w"), indent=2)
+events_payload = {
+    "schemaVersion": 1,
+    "contractsVersion": contracts_version,
+    "events": events,
+}
+json.dump(events_payload, open(os.path.join(root, "artifacts/events.json"), "w"), indent=2)
 
 # --- Generate bindings/errors.ts ---
 def pascal(s):
@@ -202,6 +234,6 @@ events_ts_path = os.path.join(root, "bindings/events.ts")
 with open(events_ts_path, "w") as f:
     f.write("\n".join(ev_lines))
 
-print(f"{len(errors)} errors, {len(events)} events (docs match the contracts)")
+print(f"{len(errors)} errors, {len(events)} events (docs match the contracts, schemaVersion: 1, contractsVersion: {contracts_version})")
 print(f"Generated {errors_ts_path}")
 print(f"Generated {events_ts_path}")

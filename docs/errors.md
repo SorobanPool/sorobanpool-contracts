@@ -90,3 +90,23 @@ Generated from the `Error` enums in each contract (namespaced: config 100s, regi
 | 702 | smart_wallet | LastSigner |
 | 703 | smart_wallet | TooManySigners |
 | 704 | smart_wallet | BadCredentialId |
+
+## Exported Artifact Schema
+
+`artifacts/errors.json` is exported by `scripts/export_artifacts.py` with top-level metadata:
+
+```json
+{
+  "schemaVersion": 1,
+  "contractsVersion": "0.1.0",
+  "errors": [
+    {
+      "code": 100,
+      "contract": "config",
+      "name": "NotAdmin"
+    }
+  ]
+}
+```
+
+Consumers (e.g. frontend error mapping, backend indexers) use `schemaVersion` and `contractsVersion` to detect incompatible versions.
