@@ -9,7 +9,7 @@ What is done, what is left, and who owns the parts this repository cannot finish
 - [ ] **External audit.** Not something this repository can do; needs a hired firm. `scripts/deploy.sh` already refuses a mainnet deploy without `MAINNET_CONFIRM=yes`, a clean tree, a release tag and an audit hash — the hash itself still needs to come from a real audit.
 - [x] Budget test limits are the real testnet network config (not assumed): `txMaxInstructions`=400,000,000, `txMemoryLimit`=41,943,040 bytes, read live via RPC. Still: native execution under-reports Wasm cost, and mainnet config may differ from testnet's — re-confirm there before relying on this.
 - [ ] Coverage-guided fuzzing (cargo-fuzz, needs nightly Rust) as a follow-up to the property-based fuzzing already in place.
-- [ ] Admin key: must be a real multisig before mainnet (see threat model).
+- [x] Admin key: two-step handover implemented (`propose_admin`/`accept_admin`/`cancel_admin_proposal`) in config ready for multisig transfer before mainnet.
 - [ ] `smart_wallet` (ADR 0006) is new code that holds user funds: include it in the audit scope.
 - [x] Incident response runbook written and testnet dry-run completed: [`docs/runbooks/incident-response.md`](runbooks/incident-response.md). Covers pause scope selection, emergency upgrade (multisig required), parameter tuning, and what stays available to users during a pause.
 

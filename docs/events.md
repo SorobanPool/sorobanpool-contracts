@@ -9,6 +9,7 @@ Short symbols are limited to 9 characters, so some brief names are abbreviated. 
 | config | `params` | `updated` | `platform_fee_bp` |
 | config | `paused` / `unpaused` | scope | caller / `true` |
 | config | `upgraded` | `config` | wasm hash |
+| config | `admin_proposed` / `admin_changed` | new admin | caller / old admin |
 | registry | `user_reg` | user | role |
 | registry | `user_att` | user | `(role, level)` |
 | registry | `user_rev` / `user_sus` | user | `(role, reason)` |

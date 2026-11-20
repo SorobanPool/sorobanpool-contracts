@@ -4,7 +4,7 @@ use soroban_sdk::{
     Env, Symbol,
 };
 use sp_common::clients::ConfigClient;
-use sp_common::events::emit;
+use sp_common::events::{self, emit};
 use sp_common::keys;
 use sp_common::ttl::bump_persistent;
 use sp_common::types::{RepStats, Role};
@@ -129,13 +129,7 @@ impl Reputation {
         env.storage().persistent().set(&k, &s);
         bump_persistent(&env, &k);
         let tier = compute_tier(role, &s, env.ledger().timestamp());
-        emit(
-            &env,
-            C,
-            symbol_short!("rep_upd"),
-            subject,
-            (role, event, tier),
-        );
+        emit(&env, C, events::REP_UPD, subject, (role, event, tier));
     }
 
     pub fn stats(env: Env, subject: Address, role: Role) -> RepStats {

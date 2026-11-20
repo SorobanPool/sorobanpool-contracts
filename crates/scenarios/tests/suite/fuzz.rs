@@ -4,7 +4,7 @@
 use proptest::prelude::*;
 use scenarios::*;
 use soroban_sdk::testutils::Events as _;
-use soroban_sdk::{symbol_short, Address, IntoVal, Val};
+use soroban_sdk::{symbol_short, xdr, Address, Symbol, TryFromVal};
 use sp_common::types::PoolState;
 
 /// Collect every address that the escrow contract (`gb_id`) transferred tokens *to*.
@@ -13,27 +13,22 @@ use sp_common::types::PoolState;
 /// `[Symbol("transfer"), from: Address, to: Address]`.  We filter to transfers
 /// whose `from` is the group_buy contract so we only examine escrow outflows.
 fn escrow_outflow_destinations(c: &Ctx, gb_id: &Address) -> Vec<Address> {
-    let transfer_sym: Val = symbol_short!("transfer").into_val(&c.env);
-    c.env
-        .events()
-        .all()
-        .iter()
-        .filter_map(|(_contract, topics, _data)| {
-            if topics.len() < 3 {
-                return None;
+    let mut out = Vec::new();
+    for event in c.env.events().all().events() {
+        let xdr::ContractEventBody::V0(ref v0) = event.body;
+        if v0.topics.len() >= 3 {
+            if let (Ok(sym), Ok(from), Ok(to)) = (
+                Symbol::try_from_val(&c.env, &v0.topics[0]),
+                Address::try_from_val(&c.env, &v0.topics[1]),
+                Address::try_from_val(&c.env, &v0.topics[2]),
+            ) {
+                if sym == symbol_short!("transfer") && &from == gb_id {
+                    out.push(to);
+                }
             }
-            // topic[0] must be the "transfer" symbol
-            if topics.get_unchecked(0) != transfer_sym {
-                return None;
-            }
-            // topic[1] is `from` — only care about outflows from escrow
-            let from = Address::try_from_val(&c.env, &topics.get_unchecked(1)).ok()?;
-            if &from != gb_id {
-                return None;
-            }
-            Address::try_from_val(&c.env, &topics.get_unchecked(2)).ok()
-        })
-        .collect()
+        }
+    }
+    out
 }
 
 #[derive(Debug, Clone)]
@@ -66,7 +61,7 @@ fn typed<T, E: std::fmt::Debug, C: std::fmt::Debug>(
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(40))]
+    #![proptest_config(ProptestConfig::with_cases(fuzz_cases(40)))]
 
     #[test]
     fn random_sequences_conserve_tokens_and_fail_cleanly(ops in proptest::collection::vec(op(), 1..25), received_pct in 0u32..=100) {
@@ -128,7 +123,7 @@ proptest! {
 // that run the pool to completion (Settled, Expired, or Failed).
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(30))]
+    #![proptest_config(ProptestConfig::with_cases(fuzz_cases(30)))]
 
     #[test]
     fn escrow_only_pays_allowed_destinations(
@@ -140,7 +135,7 @@ proptest! {
         let members: Vec<Address> = (0..6).map(|_| c.trader()).collect();
 
         // Allowed set: every address that may legitimately receive escrow funds.
-        let allowed: std::collections::HashSet<Address> = members
+        let allowed: Vec<Address> = members
             .iter()
             .cloned()
             .chain([
@@ -182,7 +177,7 @@ proptest! {
         // Assert: every address that received tokens from escrow is in the allowed set.
         for dest in escrow_outflow_destinations(&c, &gb_id) {
             prop_assert!(
-                allowed.contains(&dest),
+                allowed.iter().any(|a| a == &dest),
                 "escrow paid an unexpected destination: {:?}",
                 dest
             );
@@ -200,14 +195,10 @@ fn escrow_outflows_cover_all_paths_and_stay_in_allowed_set() {
 
     let members: Vec<Address> = (0..4).map(|_| c.trader()).collect();
 
-    let allowed: std::collections::HashSet<Address> = members
+    let allowed: Vec<Address> = members
         .iter()
         .cloned()
-        .chain([
-            c.supplier.clone(),
-            c.organizer.clone(),
-            c.treasury.clone(),
-        ])
+        .chain([c.supplier.clone(), c.organizer.clone(), c.treasury.clone()])
         .collect();
 
     let gb_id = c.gb.address.clone();
@@ -231,13 +222,13 @@ fn escrow_outflows_cover_all_paths_and_stay_in_allowed_set() {
 
     // Pull refunds for all members (tier credits + shortfall credits).
     for m in &members {
-        c.gb.claim_refund(&pool, m);
+        c.gb.claim_refund(m, &pool);
     }
     c.gb.sweep_dust(&pool);
 
     for dest in escrow_outflow_destinations(&c, &gb_id) {
         assert!(
-            allowed.contains(&dest),
+            allowed.iter().any(|a| a == &dest),
             "escrow paid an unexpected destination: {dest:?}"
         );
     }

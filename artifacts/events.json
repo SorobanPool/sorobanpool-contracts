@@ -24,6 +24,18 @@
     "data": "wasm hash"
   },
   {
+    "contract": "config",
+    "event": "admin_proposed",
+    "key": "new admin",
+    "data": "caller / old admin"
+  },
+  {
+    "contract": "config",
+    "event": "admin_changed",
+    "key": "new admin",
+    "data": "caller / old admin"
+  },
+  {
     "contract": "registry",
     "event": "user_reg",
     "key": "user",

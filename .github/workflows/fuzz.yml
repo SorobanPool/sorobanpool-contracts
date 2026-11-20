@@ -1,0 +1,36 @@
+name: fuzz
+on:
+  schedule:
+    - cron: '0 0 * * 0' # weekly on Sunday at midnight UTC
+  workflow_dispatch:
+    inputs:
+      fuzz_cases:
+        description: 'Number of fuzz test cases per property'
+        required: false
+        default: '500'
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.98.1
+      - uses: Swatinem/rust-cache@v2
+      - name: Run fuzz and property tests with larger budget
+        env:
+          FUZZ_CASES: ${{ github.event.inputs.fuzz_cases || '500' }}
+          PROPTEST_CASES: ${{ github.event.inputs.fuzz_cases || '500' }}
+        run: |
+          cargo test -p scenarios --test main fuzz
+          cargo test -p scenarios --test main properties
+      - name: Upload failing seeds
+        if: failure() || always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fuzz-failing-seeds
+          path: |
+            **/proptest-regressions/**
+            **/*.seed
+          if-no-files-found: ignore

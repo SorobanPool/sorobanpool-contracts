@@ -1,5 +1,6 @@
 use super::*;
 use soroban_sdk::testutils::Address as _;
+use soroban_sdk::IntoVal;
 
 fn setup() -> (Env, ConfigClient<'static>, Address) {
     let env = Env::default();
@@ -76,7 +77,7 @@ fn registries() {
 
 #[test]
 fn snapshot_matches_individual_views() {
-    let (e, c, admin) = setup();
+    let (_e, c, admin) = setup();
     // un-paused baseline: snapshot params equal get_params, all flags false
     let snap = c.snapshot();
     let p = c.get_params();
@@ -126,4 +127,82 @@ fn snapshot_matches_individual_views() {
     // pause flags still match after params change
     assert_eq!(snap5.paused_commit, c.is_paused(&symbol_short!("commit")));
     assert_eq!(snap5.paused_create, c.is_paused(&symbol_short!("create")));
+}
+
+#[test]
+fn admin_two_step_handover_happy_path() {
+    let (e, c, admin) = setup();
+    let new_admin = Address::generate(&e);
+
+    assert_eq!(c.admin(), admin);
+    assert_eq!(c.proposed_admin(), None);
+
+    // Current admin proposes new admin
+    c.propose_admin(&new_admin);
+    assert_eq!(c.proposed_admin(), Some(new_admin.clone()));
+    assert_eq!(c.admin(), admin);
+
+    // Proposed admin accepts
+    c.accept_admin();
+    assert_eq!(c.admin(), new_admin);
+    assert_eq!(c.proposed_admin(), None);
+}
+
+#[test]
+fn admin_proposal_cancellation_and_overwrite() {
+    let (e, c, _admin) = setup();
+    let first = Address::generate(&e);
+    let second = Address::generate(&e);
+
+    c.propose_admin(&first);
+    assert_eq!(c.proposed_admin(), Some(first.clone()));
+
+    // Overwrite with second
+    c.propose_admin(&second);
+    assert_eq!(c.proposed_admin(), Some(second.clone()));
+
+    // Cancel proposal
+    c.cancel_admin_proposal();
+    assert_eq!(c.proposed_admin(), None);
+
+    // Accepting now fails with NoAdminProposal
+    assert!(c.try_accept_admin().is_err());
+}
+
+#[test]
+fn admin_proposal_unauthorized_acceptance() {
+    let e = Env::default();
+    let admin = Address::generate(&e);
+    let id = e.register(
+        Config,
+        (&admin, Address::generate(&e), Address::generate(&e)),
+    );
+    let c = ConfigClient::new(&e, &id);
+
+    let proposed = Address::generate(&e);
+    let stranger = Address::generate(&e);
+
+    // Mock admin auth for proposal
+    e.mock_auths(&[soroban_sdk::testutils::MockAuth {
+        address: &admin,
+        invoke: &soroban_sdk::testutils::MockAuthInvoke {
+            contract: &id,
+            fn_name: "propose_admin",
+            args: (&proposed,).into_val(&e),
+            sub_invokes: &[],
+        },
+    }]);
+    c.propose_admin(&proposed);
+
+    // Stranger tries to accept (mocking stranger auth, not proposed)
+    e.mock_auths(&[soroban_sdk::testutils::MockAuth {
+        address: &stranger,
+        invoke: &soroban_sdk::testutils::MockAuthInvoke {
+            contract: &id,
+            fn_name: "accept_admin",
+            args: ().into_val(&e),
+            sub_invokes: &[],
+        },
+    }]);
+    assert!(c.try_accept_admin().is_err());
 }
