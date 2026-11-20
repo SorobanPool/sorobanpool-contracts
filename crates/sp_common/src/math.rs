@@ -78,6 +78,52 @@ pub fn validate_tiers(tiers: &Vec<Tier>, moq: u32, max_units: u32) -> bool {
     }
 }
 
+/// Slice version of `tier_index` for host-independent math evaluation.
+pub fn tier_index_slice(tiers: &[Tier], total_units: u32) -> Option<usize> {
+    let mut found = None;
+    for (i, t) in tiers.iter().enumerate() {
+        if total_units >= t.min_units {
+            found = Some(i);
+        }
+    }
+    found
+}
+
+/// Slice version of `ceiling_price` for host-independent math evaluation.
+pub fn ceiling_price_slice(tiers: &[Tier], total_before: u32) -> Option<i128> {
+    let idx = tier_index_slice(tiers, total_before).unwrap_or(0);
+    tiers.get(idx).map(|t| t.unit_price)
+}
+
+/// Slice version of `final_unit_price` for host-independent math evaluation.
+pub fn final_unit_price_slice(tiers: &[Tier], total_units: u32) -> Option<i128> {
+    ceiling_price_slice(tiers, total_units)
+}
+
+/// Slice version of `validate_tiers` for host-independent validation.
+pub fn validate_tiers_slice(tiers: &[Tier], moq: u32, max_units: u32) -> bool {
+    let n = tiers.len();
+    if n == 0 || n > crate::types::caps::MAX_TIERS as usize {
+        return false;
+    }
+    let mut prev: Option<&Tier> = None;
+    for t in tiers {
+        if t.unit_price <= 0 || t.min_units == 0 {
+            return false;
+        }
+        if let Some(p) = prev {
+            if t.min_units <= p.min_units || t.unit_price >= p.unit_price {
+                return false;
+            }
+        }
+        prev = Some(t);
+    }
+    match tiers.first() {
+        Some(first) => first.min_units == moq && max_units >= moq,
+        None => false,
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

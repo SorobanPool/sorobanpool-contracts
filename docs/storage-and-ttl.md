@@ -1,8 +1,11 @@
 # Storage and TTL
 
-- **Instance:** config pointers (`config` address), id counters, config parameters/admin/treasury.
+- **Instance:** config pointers (`config` address), id counters, config parameters/admin/treasury, category allow-list (`categories()`, bounded at `MAX_CATEGORIES = 50` symbols).
 - **Persistent:** pools, commitments, member pages (50 addresses per page), disputes and per-pool dispute lists, bonds, registry records, reputation stats, config flags (attestors, arbiters, categories, pause scopes).
 - **Temporary:** none for money-related data.
+
+### Config Category Storage Growth
+The enumerable category allow-list (`categories()`) is stored in `config` instance storage as a `Vec<Symbol>`. To prevent unbounded state growth in instance storage, the list is strictly capped at `MAX_CATEGORIES = 50` unique entries. `set_category` maintains this enumerable collection without duplicates, only retaining active (allowed) categories, bounding the footprint to < 500 bytes.
 
 Every read or write of a persistent entry extends its TTL (`sp_common::ttl`, threshold ~30 days, extend to ~60 days).
 

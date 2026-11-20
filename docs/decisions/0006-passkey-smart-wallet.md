@@ -35,6 +35,13 @@ The signature payload Soroban hands to `__check_auth` already commits to the net
 whole invocation tree, so an assertion authorises one specific call once. The frontend additionally refuses to
 sign an invocation tree it did not ask for (frontend `lib/verify.ts`).
 
+### Signature malleability and replay protection
+secp256r1 signatures admit high-S and low-S encodings. The wallet strictly relies on OpenZeppelin's WebAuthn
+verifier and the host crypto environment, which rejects high-S representations and requires canonical low-S
+normalization. Furthermore, replay protection does not depend on signature bytes or hashes: Soroban's auth
+framework consumes the unique account nonce committed inside the signature payload upon authorization, ensuring
+that neither the original assertion nor any malleable variant can be reused to authorize a second action.
+
 Deployment: the backend sponsor deploys one wallet per user with
 `createContractV2(address = sponsor, salt = sha256(credential id), wasm hash, constructor args)`, using the
 public key from a WebAuthn registration the backend verified (attestation checked server-side). Only the

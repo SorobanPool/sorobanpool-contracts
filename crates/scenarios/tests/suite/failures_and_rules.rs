@@ -310,7 +310,6 @@ fn settled_pool_updates_reputation() {
 /// Helper: attempt create_pool with the given fill_deadline and return the error
 /// code if the call fails, or None if it succeeds.
 fn try_dl(c: &scenarios::Ctx, deadline: u64) -> Option<u32> {
-    use soroban_sdk::testutils::arbitrary::std::Error as SdkError;
     c.gb.try_create_pool(
         &c.organizer,
         &c.terms(),
@@ -320,7 +319,8 @@ fn try_dl(c: &scenarios::Ctx, deadline: u64) -> Option<u32> {
         &deadline,
     )
     .err()
-    .map(|e| e.map(|ce| ce.to_val().get_minor()).unwrap_or(0))
+    .and_then(|r| r.ok())
+    .map(|e| e.get_code())
 }
 
 #[test]
@@ -356,14 +356,7 @@ fn fill_deadline_at_max_window_is_accepted() {
     let at_cap = c.now() + p.max_fill_window_secs;
     assert!(c
         .gb
-        .try_create_pool(
-            &c.organizer,
-            &c.terms(),
-            &h(&c.env, 7),
-            &0,
-            &None,
-            &at_cap,
-        )
+        .try_create_pool(&c.organizer, &c.terms(), &h(&c.env, 7), &0, &None, &at_cap,)
         .is_ok());
 }
 

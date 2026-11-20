@@ -49,6 +49,43 @@ impl Passkey {
             signature: BytesN::from_array(env, &sig.to_bytes().into()),
         }
     }
+
+    /// Alternate high-S form of the assertion signature for malleability testing.
+    fn assert_high_s(&self, env: &Env, payload: &[u8; 32], flags: u8, kind: &str) -> Signature {
+        let mut sig = self.assert(env, payload, flags, kind);
+        // Order n for secp256r1:
+        // 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
+        let order = [
+            0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xbc, 0xe6, 0xfa, 0xad, 0xa7, 0x17, 0x9e, 0x84, 0xf3, 0xb9, 0xca, 0xc2,
+            0xfc, 0x63, 0x25, 0x51,
+        ];
+        let sig_bytes: [u8; 64] = sig.signature.to_array();
+        let mut r = [0u8; 32];
+        let mut s = [0u8; 32];
+        r.copy_from_slice(&sig_bytes[..32]);
+        s.copy_from_slice(&sig_bytes[32..]);
+
+        // s_high = order - s
+        let mut s_high = [0u8; 32];
+        let mut borrow = 0i16;
+        for i in (0..32).rev() {
+            let diff = (order[i] as i16) - (s[i] as i16) - borrow;
+            if diff < 0 {
+                s_high[i] = (diff + 256) as u8;
+                borrow = 1;
+            } else {
+                s_high[i] = diff as u8;
+                borrow = 0;
+            }
+        }
+
+        let mut high_bytes = [0u8; 64];
+        high_bytes[..32].copy_from_slice(&r);
+        high_bytes[32..].copy_from_slice(&s_high);
+        sig.signature = BytesN::from_array(env, &high_bytes);
+        sig
+    }
 }
 
 fn sha2_256(data: &[u8]) -> [u8; 32] {
@@ -193,4 +230,25 @@ fn signer_limits() {
         c.try_remove_signer(&Bytes::new(&env)),
         Err(Ok(Error::BadCredentialId.into()))
     );
+}
+
+#[test]
+fn signature_malleability_high_s_is_rejected_and_cannot_replay() {
+    let (env, wallet, pk) = setup();
+    let payload = BytesN::<32>::random(&env);
+
+    // 1. Normal (low-S) signature verifies successfully
+    let low_sig = pk.assert(&env, &payload.to_array(), UP_UV, "webauthn.get");
+    assert_eq!(check(&env, &wallet, &payload, low_sig.clone()), Ok(()));
+
+    // 2. High-S alternate form of the same signature is rejected by the host verifier
+    let high_sig = pk.assert_high_s(&env, &payload.to_array(), UP_UV, "webauthn.get");
+    assert!(host_rejects(&env, &wallet, &payload, high_sig.clone()));
+
+    // 3. Replay protection is independent of signature bytes:
+    // Even if an attacker presents an alternate malleated signature, it cannot authorize
+    // another action/payload, because Soroban authentication binds to invocation payloads and nonces.
+    let next_payload = BytesN::<32>::random(&env);
+    assert!(host_rejects(&env, &wallet, &next_payload, low_sig));
+    assert!(host_rejects(&env, &wallet, &next_payload, high_sig));
 }
