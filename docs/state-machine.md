@@ -26,7 +26,7 @@ Supplier failures (`reject`, `fail_accept`, `fail_delivery`) record `failed` in 
 | `reject` | supplier | Filled → Failed |
 | `fail_accept` | anyone | Filled, accept window passed → Failed |
 | `dispatch` | supplier | Accepted |
-| `confirm_delivery` | organizer | Accepted or Dispatched, `received ≤ total` |
+| `confirm_delivery` | organizer | Accepted or Dispatched, `received ≤ total`; delivery at or before `accepted_at + lead_time` is on-time, later delivery within the grace window is late |
 | `member_confirm_delivery` | members | After organizer-confirm deadline; ≥ 50% of units confirm → Delivered in full |
 | `fail_delivery` | anyone | Accepted/Dispatched after `accepted_at + lead + grace` → Failed (bond slashed if advance paid) |
 | `allocate_shortfall` | anyone | Delivered with `received < total`; paged; required before `settle` |

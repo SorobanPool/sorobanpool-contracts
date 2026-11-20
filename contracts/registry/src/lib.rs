@@ -1,7 +1,7 @@
 #![no_std]
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, panic_with_error, symbol_short, Address,
-    BytesN, Env, Symbol,
+    BytesN, Env, Symbol, Vec,
 };
 use sp_common::clients::ConfigClient;
 use sp_common::events::emit;
@@ -20,6 +20,7 @@ pub enum Error {
     NotAuthorizedCaller = 204,
     InvalidLevel = 205,
     BadStatus = 206,
+    BatchTooLarge = 207,
 }
 
 #[contracttype]
@@ -40,6 +41,7 @@ struct Rec {
 }
 
 const C: Symbol = symbol_short!("registry");
+const MAX_STATUS_BATCH: u32 = 64;
 
 fn cfg(env: &Env) -> ConfigClient<'_> {
     let a: Address = env
@@ -191,6 +193,18 @@ impl Registry {
             Some(r) => r.status,
             None => Status::Unregistered,
         }
+    }
+
+    /// Returns statuses in input order. Batches are capped to keep RPC and host costs bounded.
+    pub fn statuses(env: Env, users: Vec<Address>, role: Role) -> Vec<Status> {
+        if users.len() > MAX_STATUS_BATCH {
+            panic_with_error!(&env, Error::BatchTooLarge);
+        }
+        let mut result = Vec::new(&env);
+        for user in users.iter() {
+            result.push_back(Self::status(env.clone(), user, role));
+        }
+        result
     }
 
     pub fn level(env: Env, user: Address, role: Role) -> u32 {

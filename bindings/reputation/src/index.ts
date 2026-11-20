@@ -36,7 +36,10 @@ if (typeof window !== "undefined") {
 export const Errors = {
   600: {message:"NotAuthorizedCaller"},
   601: {message:"UnknownEvent"},
-  602: {message:"NotInitialised"}
+  602: {message:"NotInitialised"},
+  603: {message:"InvalidCorrection"},
+  604: {message:"CorrectionTooLarge"},
+  605: {message:"CorrectionUnderflow"}
 }
 
 export type Role = {tag: "Trader", values: void} | {tag: "Organizer", values: void} | {tag: "Supplier", values: void};
@@ -60,6 +63,8 @@ last_failed_at: u64;
 }
 
 export interface Client {
+  /** Admin-only bounded decrement of one named reputation counter. */
+  correct: ({admin, subject, role, counter, delta, reason}: {admin: string, subject: string, role: Role, counter: string, delta: u32, reason: string}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
   /**
    * Construct and simulate a tier transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
@@ -108,6 +113,7 @@ export class Client extends ContractClient {
     )
   }
   public readonly fromJSON = {
+    correct: this.txFromJSON<null>,
     tier: this.txFromJSON<u32>,
         stats: this.txFromJSON<RepStats>,
         record: this.txFromJSON<null>

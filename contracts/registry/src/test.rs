@@ -92,3 +92,22 @@ fn roles_are_independent() {
     assert_eq!(c.reg.status(&user, &Role::Supplier), Status::Unregistered);
     assert!(c.reg.try_unsuspend(&c.admin, &user, &Role::Trader).is_err());
 }
+
+#[test]
+fn statuses_preserve_order_and_are_bounded() {
+    let c = setup();
+    let registered = Address::generate(&c.env);
+    let suspended = Address::generate(&c.env);
+    let unknown = Address::generate(&c.env);
+    c.reg.register(&registered, &Role::Trader, &h(&c.env, 1), &None);
+    c.reg.register(&suspended, &Role::Trader, &h(&c.env, 2), &None);
+    c.reg.suspend(&c.admin, &suspended, &Role::Trader, &symbol_short!("test"));
+    let users = vec![&c.env, registered.clone(), suspended.clone(), unknown.clone()];
+    let statuses = c.reg.statuses(&users, &Role::Trader);
+    assert_eq!(statuses.len(), 3);
+    assert_eq!(statuses.get(0), Some(Status::Registered));
+    assert_eq!(statuses.get(1), Some(Status::Suspended));
+    assert_eq!(statuses.get(2), Some(Status::Unregistered));
+    let too_many = (0..65).map(|_| Address::generate(&c.env)).collect::<Vec<_>>();
+    assert!(c.reg.try_statuses(&too_many, &Role::Trader).is_err());
+}

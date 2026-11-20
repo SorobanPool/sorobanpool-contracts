@@ -41,3 +41,5 @@ scenario, property, fuzz and budget tests.
 
 Further reading: `state-machine.md`, `pricing-math.md`, `events.md`, `errors.md`, `storage-and-ttl.md`,
 `threat-model.md`, `decisions/`.
+
+The registry `statuses` view accepts at most 64 users per call and preserves input order.

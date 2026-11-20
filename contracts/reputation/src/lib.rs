@@ -16,6 +16,9 @@ pub enum Error {
     NotAuthorizedCaller = 600,
     UnknownEvent = 601,
     NotInitialised = 602,
+    InvalidCorrection = 603,
+    CorrectionTooLarge = 604,
+    CorrectionUnderflow = 605,
 }
 
 #[contracttype]
@@ -27,6 +30,7 @@ enum Key {
 
 const C: Symbol = symbol_short!("rep");
 const MONTH_SECS: u64 = 30 * 24 * 3600;
+const MAX_CORRECTION: u32 = 1_000;
 
 fn rate_bp(num: u32, den: u32) -> u32 {
     if den == 0 {
@@ -105,24 +109,24 @@ impl Reputation {
             s.first_active_at = env.ledger().timestamp();
         }
         if event == symbol_short!("settled") {
-            s.pools_settled += 1;
+            s.pools_settled = s.pools_settled.saturating_add(1);
         } else if event == symbol_short!("failed") {
-            s.pools_failed += 1;
+            s.pools_failed = s.pools_failed.saturating_add(1);
             s.last_failed_at = env.ledger().timestamp();
         } else if event == symbol_short!("on_time") {
-            s.on_time += 1;
+            s.on_time = s.on_time.saturating_add(1);
         } else if event == symbol_short!("late") {
-            s.late += 1;
+            s.late = s.late.saturating_add(1);
         } else if event == symbol_short!("d_open") {
-            s.disputes_opened += 1;
+            s.disputes_opened = s.disputes_opened.saturating_add(1);
         } else if event == symbol_short!("d_won") {
-            s.disputes_won += 1;
+            s.disputes_won = s.disputes_won.saturating_add(1);
         } else if event == symbol_short!("d_lost") {
-            s.disputes_lost += 1;
+            s.disputes_lost = s.disputes_lost.saturating_add(1);
         } else if event == symbol_short!("short") {
-            s.short_deliveries += 1;
+            s.short_deliveries = s.short_deliveries.saturating_add(1);
         } else if event == symbol_short!("pickup") {
-            s.pickups_confirmed += 1;
+            s.pickups_confirmed = s.pickups_confirmed.saturating_add(1);
         } else {
             panic_with_error!(&env, Error::UnknownEvent);
         }
@@ -136,6 +140,55 @@ impl Reputation {
             subject,
             (role, event, tier),
         );
+    }
+
+    /// Admin-only bounded decrement. Counters saturate at u32::MAX when recorded normally.
+    pub fn correct(
+        env: Env,
+        admin: Address,
+        subject: Address,
+        role: Role,
+        counter: Symbol,
+        delta: u32,
+        reason: Symbol,
+    ) {
+        admin.require_auth();
+        let cfg_addr: Address = env
+            .storage()
+            .instance()
+            .get(&Key::Config)
+            .unwrap_or_else(|| panic_with_error!(&env, Error::NotInitialised));
+        let cfg = ConfigClient::new(&env, &cfg_addr);
+        if admin != cfg.admin() {
+            panic_with_error!(&env, Error::NotAuthorizedCaller);
+        }
+        if delta == 0 {
+            panic_with_error!(&env, Error::InvalidCorrection);
+        }
+        if delta > MAX_CORRECTION {
+            panic_with_error!(&env, Error::CorrectionTooLarge);
+        }
+        let k = Key::Stats(subject.clone(), role);
+        let mut s: RepStats = env.storage().persistent().get(&k).unwrap_or_default();
+        let counter_ref = match counter.clone() {
+            c if c == symbol_short!("settled") => &mut s.pools_settled,
+            c if c == symbol_short!("failed") => &mut s.pools_failed,
+            c if c == symbol_short!("on_time") => &mut s.on_time,
+            c if c == symbol_short!("late") => &mut s.late,
+            c if c == symbol_short!("d_open") => &mut s.disputes_opened,
+            c if c == symbol_short!("d_won") => &mut s.disputes_won,
+            c if c == symbol_short!("d_lost") => &mut s.disputes_lost,
+            c if c == symbol_short!("short") => &mut s.short_deliveries,
+            c if c == symbol_short!("pickup") => &mut s.pickups_confirmed,
+            _ => panic_with_error!(&env, Error::InvalidCorrection),
+        };
+        if *counter_ref < delta {
+            panic_with_error!(&env, Error::CorrectionUnderflow);
+        }
+        *counter_ref -= delta;
+        env.storage().persistent().set(&k, &s);
+        bump_persistent(&env, &k);
+        emit(&env, C, Symbol::new(&env, "rep_corrected"), subject, (role, counter, delta, reason));
     }
 
     pub fn stats(env: Env, subject: Address, role: Role) -> RepStats {

@@ -40,7 +40,8 @@ export const Errors = {
   203: {message:"NotAdmin"},
   204: {message:"NotAuthorizedCaller"},
   205: {message:"InvalidLevel"},
-  206: {message:"BadStatus"}
+  206: {message:"BadStatus"},
+  207: {message:"BatchTooLarge"}
 }
 
 export type Role = {tag: "Trader", values: void} | {tag: "Organizer", values: void} | {tag: "Supplier", values: void};
@@ -48,6 +49,8 @@ export type Role = {tag: "Trader", values: void} | {tag: "Organizer", values: vo
 export type Status = {tag: "Unregistered", values: void} | {tag: "Registered", values: void} | {tag: "Verified", values: void} | {tag: "Suspended", values: void} | {tag: "Closed", values: void};
 
 export interface Client {
+  /** Returns statuses in input order; maximum batch size is 64. */
+  statuses: ({users, role}: {users: Array<string>, role: Role}, options?: MethodOptions) => Promise<AssembledTransaction<Array<Status>>>
   /**
    * Construct and simulate a level transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
@@ -126,6 +129,7 @@ export class Client extends ContractClient {
     )
   }
   public readonly fromJSON = {
+    statuses: this.txFromJSON<Array<Status>>,
     level: this.txFromJSON<u32>,
         attest: this.txFromJSON<null>,
         revoke: this.txFromJSON<null>,

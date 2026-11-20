@@ -152,6 +152,35 @@ fn collective_member_confirmation_when_organizer_is_silent() {
     assert_eq!(p.received_units, 420);
 }
 
+fn settled_delivery(offset_from_lead: i64) -> sp_common::types::RepStats {
+    let c = setup();
+    let pool = c.pool(0);
+    c.fill_standard(pool);
+    c.gb.accept(&c.supplier, &pool, &0);
+    let lead = c.gb.pool(&pool).terms.lead_time_secs;
+    if offset_from_lead >= 0 {
+        c.advance(lead + offset_from_lead as u64);
+    } else {
+        c.advance(lead - (-offset_from_lead) as u64);
+    }
+    c.gb.dispatch(&c.supplier, &pool, &None);
+    c.gb
+        .confirm_delivery(&c.organizer, &pool, &420, &h(&c.env, 6));
+    c.advance(48 * DAY + 1);
+    c.gb.settle(&pool);
+    c.rep.stats(&c.supplier, &Role::Supplier)
+}
+
+#[test]
+fn delivery_on_time_boundary_and_grace_are_tracked_separately() {
+    let before = settled_delivery(-1);
+    assert_eq!((before.on_time, before.late), (1, 0));
+    let exact = settled_delivery(0);
+    assert_eq!((exact.on_time, exact.late), (1, 0));
+    let late = settled_delivery(DAY);
+    assert_eq!((late.on_time, late.late), (0, 1));
+}
+
 #[test]
 fn rules_and_limits() {
     let c = setup();

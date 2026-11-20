@@ -2,7 +2,7 @@ use super::*;
 use config::{Config, ConfigClient};
 use soroban_sdk::testutils::{Address as _, Ledger};
 
-fn setup() -> (Env, ReputationClient<'static>, Address) {
+fn setup() -> (Env, ReputationClient<'static>, Address, Address) {
     let env = Env::default();
     env.mock_all_auths();
     env.ledger().set_timestamp(1_000);
@@ -16,7 +16,7 @@ fn setup() -> (Env, ReputationClient<'static>, Address) {
     cfg.set_address(&keys::GROUP_BUY, &gb);
     cfg.set_address(&keys::DISPUTES, &Address::generate(&env));
     let id = env.register(Reputation, (&cfg_id,));
-    (env.clone(), ReputationClient::new(&env, &id), gb)
+    (env.clone(), ReputationClient::new(&env, &id), gb, admin)
 }
 
 fn rec(c: &ReputationClient, gb: &Address, who: &Address, role: Role, ev: Symbol, n: u32) {
@@ -27,7 +27,7 @@ fn rec(c: &ReputationClient, gb: &Address, who: &Address, role: Role, ev: Symbol
 
 #[test]
 fn only_pool_contracts_may_record() {
-    let (env, c, _) = setup();
+    let (env, c, _, _) = setup();
     let stranger = Address::generate(&env);
     let who = Address::generate(&env);
     assert!(c
@@ -37,7 +37,7 @@ fn only_pool_contracts_may_record() {
 
 #[test]
 fn unknown_event_rejected() {
-    let (env, c, gb) = setup();
+    let (env, c, gb, _) = setup();
     let who = Address::generate(&env);
     assert!(c
         .try_record(&gb, &who, &Role::Supplier, &symbol_short!("bogus"))
@@ -46,7 +46,7 @@ fn unknown_event_rejected() {
 
 #[test]
 fn supplier_tiers() {
-    let (env, c, gb) = setup();
+    let (env, c, gb, _) = setup();
     let s = Address::generate(&env);
     assert_eq!(c.tier(&s, &Role::Supplier), 0);
     rec(&c, &gb, &s, Role::Supplier, symbol_short!("settled"), 3);
@@ -67,7 +67,7 @@ fn supplier_tiers() {
 
 #[test]
 fn organizer_and_trader_tiers() {
-    let (env, c, gb) = setup();
+    let (env, c, gb, _) = setup();
     let o = Address::generate(&env);
     rec(&c, &gb, &o, Role::Organizer, symbol_short!("settled"), 3);
     assert_eq!(c.tier(&o, &Role::Organizer), 1);
@@ -79,4 +79,34 @@ fn organizer_and_trader_tiers() {
     rec(&c, &gb, &t, Role::Trader, symbol_short!("settled"), 1);
     assert_eq!(c.tier(&t, &Role::Trader), 2);
     assert_eq!(c.stats(&t, &Role::Trader).first_active_at, 1_000);
+}
+
+#[test]
+fn correction_is_admin_only_and_bounded() {
+    let (env, c, gb, admin) = setup();
+    let who = Address::generate(&env);
+    rec(&c, &gb, &who, Role::Supplier, symbol_short!("settled"), 2);
+    c.correct(&admin, &who, &Role::Supplier, &symbol_short!("settled"), &1, &symbol_short!("fix"));
+    assert_eq!(c.stats(&who, &Role::Supplier).pools_settled, 1);
+    let stranger = Address::generate(&env);
+    assert!(c.try_correct(&stranger, &who, &Role::Supplier, &symbol_short!("settled"), &1, &symbol_short!("fix")).is_err());
+    assert!(c.try_correct(&admin, &who, &Role::Supplier, &symbol_short!("settled"), &1001, &symbol_short!("fix")).is_err());
+    assert!(c.try_correct(&admin, &who, &Role::Supplier, &symbol_short!("settled"), &2, &symbol_short!("fix")).is_err());
+}
+
+#[test]
+fn recording_at_u32_max_saturates() {
+    let (env, c, gb, _) = setup();
+    let who = Address::generate(&env);
+    let seeded = RepStats {
+        pools_settled: u32::MAX,
+        ..Default::default()
+    };
+    env.as_contract(&c.address(), || {
+        env.storage()
+            .persistent()
+            .set(&Key::Stats(who.clone(), Role::Supplier), &seeded);
+    });
+    c.record(&gb, &who, &Role::Supplier, &symbol_short!("settled"));
+    assert_eq!(c.stats(&who, &Role::Supplier).pools_settled, u32::MAX);
 }
