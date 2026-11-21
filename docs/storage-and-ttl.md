@@ -12,6 +12,11 @@ This document details the storage layout, key schemas, and TTL management polici
 
 1. **Persistent Entries:**
    Every read or write to a persistent entry invokes `sp_common::ttl::extend_persistent` (or `extend_ttl` directly), maintaining a threshold of ~30 days (518,400 ledgers) and extending the entry to ~60 days (1,036,800 ledgers). In `smart_wallet`, passkey signers are extended on every authorization up to ~120 days.
+
+| Constant | Value (Ledgers) | Time (at 5s/ledger) | Purpose |
+|---|---|---|---|
+| `TTL_THRESHOLD` | 518,400 | ~30 days | Extension is triggered when remaining entry TTL drops below this threshold |
+| `TTL_EXTEND_TO` | 1,036,800 | ~60 days | Target TTL to extend the entry to when bumping |
 2. **Instance and Code Storage:**
    **Instance and code TTL are never extended by inline contract calls.** In Soroban, extending instance storage also extends the contract's executable WASM code, which charges rent on the total contract bytecode. Extending this on standard user calls (e.g. `create_pool`) would cause severe, unnecessary transaction fees (measured up to ~159 XLM). Instead, an automated backend `ttl-extend` keeper job inspects contract instances, bytecode, active pools, open disputes, bonds, and active user accounts when remaining TTL drops below ~20 days and bumps them deliberately from the sponsor account.
 3. **Archival & Finality:**

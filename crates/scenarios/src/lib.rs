@@ -10,6 +10,16 @@ use sp_common::keys;
 use sp_common::types::{PoolTerms, Role, Tier};
 use supplier_bond::{SupplierBond, SupplierBondClient};
 
+/// Returns the number of test cases to run for fuzzing and property tests.
+/// Reads from `FUZZ_CASES` or `PROPTEST_CASES` environment variables, falling back to `default`.
+pub fn fuzz_cases(default: u32) -> u32 {
+    std::env::var("FUZZ_CASES")
+        .or_else(|_| std::env::var("PROPTEST_CASES"))
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(default)
+}
+
 pub const USDC: i128 = 10_000_000;
 pub const T0: u64 = 1_000_000;
 pub const DAY: u64 = 24 * 3600;

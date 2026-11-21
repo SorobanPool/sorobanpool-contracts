@@ -16,7 +16,7 @@ macro_rules! assert_invariant {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(24))]
+    #![proptest_config(ProptestConfig::with_cases(fuzz_cases(24)))]
 
     /// `escrow_invariant` returns `actual >= expected` in every reachable state (#143).
     #[test]

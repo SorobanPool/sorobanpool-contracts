@@ -4,7 +4,7 @@ use soroban_sdk::{
     BytesN, Env, Symbol,
 };
 use sp_common::clients::ConfigClient;
-use sp_common::events::emit;
+use sp_common::events::{self, emit};
 use sp_common::keys;
 use sp_common::ttl::bump_persistent;
 use sp_common::types::{Role, Status};
@@ -111,7 +111,7 @@ impl Registry {
             env.storage().persistent().set(&ck, &c);
             bump_persistent(&env, &ck);
         }
-        emit(&env, C, symbol_short!("user_reg"), user, role);
+        emit(&env, C, events::USER_REG, user, role);
     }
 
     /// Writes a verification hash and level. Level 0 is not a verification.
@@ -138,7 +138,7 @@ impl Registry {
         rec.level = level;
         rec.ver_hash = Some(ver_hash);
         save(&env, &user, &role, &rec);
-        emit(&env, C, symbol_short!("user_att"), user, (role, level));
+        emit(&env, C, events::USER_ATT, user, (role, level));
     }
 
     pub fn revoke(env: Env, admin: Address, user: Address, role: Role, reason: Symbol) {
@@ -148,7 +148,7 @@ impl Registry {
         rec.level = 0;
         rec.ver_hash = None;
         save(&env, &user, &role, &rec);
-        emit(&env, C, symbol_short!("user_rev"), user, (role, reason));
+        emit(&env, C, events::USER_REV, user, (role, reason));
     }
 
     /// Admin, or the `group_buy` / `disputes` contracts.
@@ -164,7 +164,7 @@ impl Registry {
         let mut rec = load(&env, &user, &role);
         rec.status = Status::Suspended;
         save(&env, &user, &role, &rec);
-        emit(&env, C, symbol_short!("user_sus"), user, (role, reason));
+        emit(&env, C, events::USER_SUS, user, (role, reason));
     }
 
     pub fn unsuspend(env: Env, admin: Address, user: Address, role: Role) {
@@ -179,7 +179,7 @@ impl Registry {
             Status::Registered
         };
         save(&env, &user, &role, &rec);
-        emit(&env, C, symbol_short!("user_uns"), user, role);
+        emit(&env, C, events::USER_UNS, user, role);
     }
 
     pub fn status(env: Env, user: Address, role: Role) -> Status {

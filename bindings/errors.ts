@@ -8,6 +8,8 @@ export const ConfigErrors = {
   ParamsExceedHardCap: 103,
   AddressNotSet: 104,
   NoGuardian: 105,
+  NoAdminProposal: 106,
+  NotProposedAdmin: 107,
 } as const;
 
 export type ConfigErrorCode = (typeof ConfigErrors)[keyof typeof ConfigErrors];

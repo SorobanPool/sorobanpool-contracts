@@ -3,7 +3,7 @@ use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, panic_with_error, symbol_short, vec,
     Address, BytesN, Env, Symbol, Vec,
 };
-use sp_common::events::emit;
+use sp_common::events::{self, emit};
 use sp_common::types::{caps, Params};
 
 /// Returned by `snapshot()`: params plus a flag for each supported pause scope.
@@ -27,6 +27,8 @@ pub enum Error {
     ParamsExceedHardCap = 103,
     AddressNotSet = 104,
     NoGuardian = 105,
+    NoAdminProposal = 106,
+    NotProposedAdmin = 107,
 }
 
 #[contracttype]
@@ -41,6 +43,7 @@ enum Key {
     Arbiter(Address),
     Category(Symbol),
     Paused(Symbol),
+    ProposedAdmin,
 }
 
 const C: Symbol = symbol_short!("config");
@@ -162,7 +165,7 @@ impl Config {
         emit(
             &env,
             C,
-            symbol_short!("params"),
+            events::PARAMS,
             symbol_short!("updated"),
             params.platform_fee_bp,
         );
@@ -238,7 +241,7 @@ impl Config {
         env.storage()
             .persistent()
             .set(&Key::Paused(scope.clone()), &true);
-        emit(&env, C, symbol_short!("paused"), scope, caller);
+        emit(&env, C, events::PAUSED, scope, caller);
     }
 
     pub fn unpause(env: Env, scope: Symbol) {
@@ -246,7 +249,7 @@ impl Config {
         env.storage()
             .persistent()
             .set(&Key::Paused(scope.clone()), &false);
-        emit(&env, C, symbol_short!("unpaused"), scope, true);
+        emit(&env, C, events::UNPAUSED, scope, true);
     }
 
     pub fn is_paused(env: Env, scope: Symbol) -> bool {
@@ -288,10 +291,46 @@ impl Config {
         emit(
             &env,
             C,
-            symbol_short!("upgraded"),
+            events::UPGRADED,
             symbol_short!("config"),
             wasm_hash,
         );
+    }
+
+    pub fn propose_admin(env: Env, new_admin: Address) {
+        require_admin(&env);
+        env.storage()
+            .instance()
+            .set(&Key::ProposedAdmin, &new_admin);
+        emit(
+            &env,
+            C,
+            events::admin_proposed(&env),
+            new_admin,
+            admin(&env),
+        );
+    }
+
+    pub fn accept_admin(env: Env) {
+        let proposed: Address = env
+            .storage()
+            .instance()
+            .get(&Key::ProposedAdmin)
+            .unwrap_or_else(|| panic_with_error!(&env, Error::NoAdminProposal));
+        proposed.require_auth();
+        let old = admin(&env);
+        env.storage().instance().set(&Key::Admin, &proposed);
+        env.storage().instance().remove(&Key::ProposedAdmin);
+        emit(&env, C, events::admin_changed(&env), proposed, old);
+    }
+
+    pub fn cancel_admin_proposal(env: Env) {
+        require_admin(&env);
+        env.storage().instance().remove(&Key::ProposedAdmin);
+    }
+
+    pub fn proposed_admin(env: Env) -> Option<Address> {
+        env.storage().instance().get(&Key::ProposedAdmin)
     }
 }
 
