@@ -38,7 +38,8 @@ export const Errors = {
   501: {message:"InsufficientFreeBond"},
   502: {message:"NotGroupBuy"},
   503: {message:"NotInitialised"},
-  504: {message:"ReleaseExceedsReserved"}
+  504: {message:"ReleaseExceedsReserved"},
+  505: {message:"WithdrawCooldown"}
 }
 
 export interface Client {

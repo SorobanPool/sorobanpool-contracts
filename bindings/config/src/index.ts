@@ -72,6 +72,7 @@ export interface Params {
   supplier_tier_caps: Array<i128>;
   trader_tier_caps: Array<i128>;
   withdraw_lock_secs: u64;
+  bond_withdraw_cooldown_secs: u64;
 }
 
 export interface Client {

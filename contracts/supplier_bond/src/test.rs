@@ -1,12 +1,13 @@
 use super::*;
 use config::{Config, ConfigClient};
-use soroban_sdk::testutils::Address as _;
+use soroban_sdk::testutils::{Address as _, Events as _, Ledger};
 
 struct Ctx {
     env: Env,
     bond: SupplierBondClient<'static>,
     gb: Address,
     usdc: token::Client<'static>,
+    cfg: ConfigClient<'static>,
     supplier: Address,
 }
 
@@ -18,13 +19,15 @@ fn setup() -> Ctx {
     let sac = env.register_stellar_asset_contract_v2(issuer);
     let cfg_id = env.register(Config, (&admin, sac.address(), Address::generate(&env)));
     let gb = Address::generate(&env);
-    ConfigClient::new(&env, &cfg_id).set_address(&keys::GROUP_BUY, &gb);
+    let cfg = ConfigClient::new(&env, &cfg_id);
+    cfg.set_address(&keys::GROUP_BUY, &gb);
     let bond_id = env.register(SupplierBond, (&cfg_id,));
     let supplier = Address::generate(&env);
     token::StellarAssetClient::new(&env, &sac.address()).mint(&supplier, &1_000);
     Ctx {
         bond: SupplierBondClient::new(&env, &bond_id),
         usdc: token::Client::new(&env, &sac.address()),
+        cfg,
         env,
         gb,
         supplier,
@@ -71,4 +74,18 @@ fn slash_pays_caller_and_caps_at_total() {
     assert_eq!(c.usdc.balance(&c.gb), 80);
     assert_eq!(c.bond.bond_of(&c.supplier), (20, 0));
     assert_eq!(c.bond.slash(&c.gb, &c.supplier, &50), 20); // capped at what is left
+    assert_eq!(c.env.events().all().events().len(), 3);
+}
+
+#[test]
+fn slash_blocks_withdrawals_but_not_deposits_until_cooldown_ends() {
+    let c = setup();
+    c.bond.deposit(&c.supplier, &500);
+    c.bond.slash(&c.gb, &c.supplier, &100);
+    assert!(c.bond.try_withdraw(&c.supplier, &1).is_err());
+    c.bond.deposit(&c.supplier, &50);
+    c.env
+        .ledger()
+        .set_timestamp(c.cfg.get_params().bond_withdraw_cooldown_secs + 1);
+    c.bond.withdraw(&c.supplier, &1);
 }

@@ -92,3 +92,14 @@ fn roles_are_independent() {
     assert_eq!(c.reg.status(&user, &Role::Supplier), Status::Unregistered);
     assert!(c.reg.try_unsuspend(&c.admin, &user, &Role::Trader).is_err());
 }
+
+#[test]
+fn closed_roles_can_reregister_without_touching_reputation_storage() {
+    let c = setup();
+    let user = Address::generate(&c.env);
+    c.reg.register(&user, &Role::Trader, &h(&c.env, 1), &None);
+    c.reg.close(&c.admin, &user, &Role::Trader, &symbol_short!("retired"));
+    c.reg.register(&user, &Role::Trader, &h(&c.env, 9), &None);
+    assert_eq!(c.reg.status(&user, &Role::Trader), Status::Registered);
+    assert_eq!(c.reg.level(&user, &Role::Trader), 0);
+}

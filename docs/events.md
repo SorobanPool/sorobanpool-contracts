@@ -11,10 +11,11 @@ Short symbols are limited to 9 characters, so some brief names are abbreviated. 
 | config | `upgraded` | `config` | wasm hash |
 | registry | `user_reg` | user | role |
 | registry | `user_att` | user | `(role, level)` |
-| registry | `user_rev` / `user_sus` | user | `(role, reason)` |
+| registry | `user_rev` / `user_sus` / `user_close` | user | `(role, reason)` |
 | registry | `user_uns` | user | role |
 | rep | `rep_upd` | subject | `(role, event, tier)` |
-| bond | `deposit` / `withdraw` / `slashed` | supplier | amount |
+| bond | `deposit` / `withdraw` | supplier | amount |
+| bond | `slashed` | supplier | `(requested, slashed)` |
 | group_buy | `pool_new` | pool id | `(organizer, supplier, offer_hash, hub_hash)` |
 | group_buy | `committed` / `commit_up` | pool id | `(member, units, amount)` |
 | group_buy | `withdrawn` | pool id | `(member, refund)` |

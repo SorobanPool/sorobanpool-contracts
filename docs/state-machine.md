@@ -15,6 +15,9 @@ Refundable end states: `Expired`, `Failed`, `Cancelled` (full refund) and `Settl
 
 Supplier failures (`reject`, `fail_accept`, `fail_delivery`) record `failed` in `reputation`; a second failure within 90 days of the previous one suspends the supplier in `registry` (brief 5.9).
 
+Registry roles may be closed by an admin and re-registered with a fresh profile hash. The
+new registration resets registry verification only; reputation records remain separate.
+
 ## State transitions (`group_buy`)
 
 The table below lists every state-changing function in [`contracts/group_buy/src/lib.rs`](../contracts/group_buy/src/lib.rs), its source and destination states, allowed callers, and required preconditions.

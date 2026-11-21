@@ -54,6 +54,12 @@
     "data": "role"
   },
   {
+    "contract": "registry",
+    "event": "user_close",
+    "key": "user",
+    "data": "(role, reason)"
+  },
+  {
     "contract": "rep",
     "event": "rep_upd",
     "key": "subject",
@@ -75,7 +81,7 @@
     "contract": "bond",
     "event": "slashed",
     "key": "supplier",
-    "data": "amount"
+    "data": "(requested, slashed)"
   },
   {
     "contract": "group_buy",

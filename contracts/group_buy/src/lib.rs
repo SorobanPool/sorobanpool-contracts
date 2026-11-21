@@ -1269,7 +1269,6 @@ impl GroupBuy {
         let remaining_amount = (pool.owed_total - pool.refunds_paid).max(0);
         (remaining_members, remaining_amount)
     }
-
     /// Read-only escrow invariant check for external monitoring (issue #143).
     ///
     /// Returns `(expected, actual)` where:

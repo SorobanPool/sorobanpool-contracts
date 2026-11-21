@@ -92,8 +92,10 @@ impl Registry {
     ) {
         user.require_auth();
         let k = Key::Rec(user.clone(), role);
-        if env.storage().persistent().has(&k) {
-            panic_with_error!(&env, Error::AlreadyRegistered);
+        if let Some(existing) = env.storage().persistent().get::<_, Rec>(&k) {
+            if existing.status != Status::Closed {
+                panic_with_error!(&env, Error::AlreadyRegistered);
+            }
         }
         save(
             &env,
@@ -112,6 +114,17 @@ impl Registry {
             bump_persistent(&env, &ck);
         }
         emit(&env, C, symbol_short!("user_reg"), user, role);
+    }
+
+    /// Closes a participant role. A later register starts that role fresh; reputation is separate.
+    pub fn close(env: Env, admin: Address, user: Address, role: Role, reason: Symbol) {
+        require_admin(&env, &admin);
+        let mut rec = load(&env, &user, &role);
+        rec.status = Status::Closed;
+        rec.level = 0;
+        rec.ver_hash = None;
+        save(&env, &user, &role, &rec);
+        emit(&env, C, Symbol::new(&env, "user_close"), user, (role, reason));
     }
 
     /// Writes a verification hash and level. Level 0 is not a verification.

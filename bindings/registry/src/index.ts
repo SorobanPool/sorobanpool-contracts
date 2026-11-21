@@ -48,6 +48,7 @@ export type Role = {tag: "Trader", values: void} | {tag: "Organizer", values: vo
 export type Status = {tag: "Unregistered", values: void} | {tag: "Registered", values: void} | {tag: "Verified", values: void} | {tag: "Suspended", values: void} | {tag: "Closed", values: void};
 
 export interface Client {
+  close: ({admin, user, role, reason}: {admin: string, user: string, role: Role, reason: string}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
   /**
    * Construct and simulate a level transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
@@ -126,6 +127,7 @@ export class Client extends ContractClient {
     )
   }
   public readonly fromJSON = {
+    close: this.txFromJSON<null>,
     level: this.txFromJSON<u32>,
         attest: this.txFromJSON<null>,
         revoke: this.txFromJSON<null>,

@@ -33,3 +33,8 @@ Trust boundaries: contracts are the source of truth for escrow; the backend cann
 | Treasury | Platform fee at `settle`; dust via `sweep_dust` |
 
 Covered since: resource budget tests at a 200-member pool (`crates/scenarios/tests/suite/budget.rs`), ≥90% line coverage on `group_buy`/`disputes`/`supplier_bond` enforced in CI, randomised operation-sequence fuzzing (`crates/scenarios/tests/suite/fuzz.rs`), escrow-destination allowlist property tests (`crates/scenarios/tests/suite/fuzz.rs` #156). Not covered yet: external audit, formal verification, coverage-guided fuzzing (needs nightly Rust).
+# Bond slash cooldown
+
+After a slash, `supplier_bond.withdraw` is blocked for the configured
+`bond_withdraw_cooldown_secs` period, bounded by the config hard cap. Deposits
+remain available during the cooldown.

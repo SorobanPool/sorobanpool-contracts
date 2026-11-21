@@ -1,5 +1,5 @@
 use scenarios::*;
-use soroban_sdk::testutils::Address as _;
+use soroban_sdk::testutils::{Address as _, Events as _};
 use soroban_sdk::Address;
 use sp_common::types::{DisputeReason, Outcome, PoolState, Role};
 
@@ -303,6 +303,7 @@ fn failed_delivery_slashes_bond_so_members_are_made_whole() {
     }
     assert_eq!(total, 400 * USDC); // everyone gets everything back
     assert_eq!(c.bal(&c.gb.address), 0);
+    assert!(format!("{:?}", c.env.events().all()).contains(&advance.to_string()));
 }
 
 #[test]

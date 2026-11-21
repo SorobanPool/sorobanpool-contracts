@@ -169,6 +169,7 @@ pub struct Params {
     pub dispute_deposit_min: i128,
     pub arbitration_sla_secs: u64,
     pub withdraw_lock_secs: u64,
+    pub bond_withdraw_cooldown_secs: u64,
     pub max_member_share_bp: u32,
     pub max_members_per_pool: u32,
     pub advance_enabled: bool,
@@ -204,4 +205,5 @@ pub mod caps {
     pub const ARBITRATION_SLA_SECS: u64 = 14 * 24 * 3600;
     pub const DISPUTE_DEPOSIT_BP: u32 = 500;
     pub const MAX_TIERS: u32 = 5;
+    pub const BOND_WITHDRAW_COOLDOWN_SECS: u64 = 30 * 24 * 3600;
 }

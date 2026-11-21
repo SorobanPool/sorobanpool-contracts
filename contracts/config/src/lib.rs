@@ -61,6 +61,7 @@ fn default_params(env: &Env) -> Params {
         dispute_deposit_min: usdc / 2,
         arbitration_sla_secs: 5 * 24 * 3600,
         withdraw_lock_secs: 2 * 3600,
+        bond_withdraw_cooldown_secs: 7 * 24 * 3600,
         max_member_share_bp: 5000,
         max_members_per_pool: 200,
         advance_enabled: false,
@@ -83,6 +84,7 @@ fn validate(p: &Params) -> Result<(), Error> {
         || p.max_fill_window_secs > caps::FILL_WINDOW_SECS
         || p.arbitration_sla_secs > caps::ARBITRATION_SLA_SECS
         || p.dispute_deposit_bp > caps::DISPUTE_DEPOSIT_BP
+        || p.bond_withdraw_cooldown_secs > caps::BOND_WITHDRAW_COOLDOWN_SECS
     {
         return Err(Error::ParamsExceedHardCap);
     }
