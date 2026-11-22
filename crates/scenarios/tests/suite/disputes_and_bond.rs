@@ -1,6 +1,6 @@
 use scenarios::*;
 use soroban_sdk::testutils::Address as _;
-use soroban_sdk::Address;
+use soroban_sdk::{Address, Vec as SorobanVec};
 use sp_common::types::{DisputeReason, Outcome, PoolState, Role};
 
 const PRICE: i128 = USDC * 8 / 10;
@@ -25,6 +25,27 @@ fn drain(c: &Ctx, pool: u64) {
     c.gb.sweep_dust(&pool);
 }
 
+/// Delivered pool with `n` members, each holding two units and able to open a one-unit dispute.
+fn dispute_pool(c: &Ctx, n: u32) -> (u64, Vec<Address>) {
+    let pool = c.pool(0);
+    let members: Vec<Address> = (0..n).map(|_| c.trader()).collect();
+    for m in &members {
+        c.gb.commit(m, &pool, &2);
+    }
+    c.advance(3 * DAY);
+    c.gb.close(&pool);
+    c.deliver(pool, n * 2);
+    (pool, members)
+}
+
+fn try_dispute(c: &Ctx, pool: u64, who: &Address) -> Option<u32> {
+    c.dis
+        .try_open(who, &pool, &DisputeReason::Damaged, &1, &h(&c.env, 3))
+        .err()
+        .and_then(|r| r.ok())
+        .map(|e| e.get_code())
+}
+
 #[test]
 fn open_freezes_amount_and_takes_deposit() {
     let (c, pool, t) = delivered();
@@ -35,6 +56,50 @@ fn open_freezes_amount_and_takes_deposit() {
     assert_eq!(c.dis.open_disputes_of(&pool).len(), 1);
     assert_eq!(c.dis.dispute(&id).claimed_amount, 10 * PRICE);
     assert_eq!(c.rep.stats(&t[0], &Role::Trader).disputes_opened, 1);
+}
+
+#[test]
+fn paged_open_disputes_view_walks_the_pool_list() {
+    let c = setup();
+    let (pool, members) = dispute_pool(&c, 50);
+    let mut ids = SorobanVec::new(&c.env);
+    for m in &members {
+        ids.push_back(open(&c, pool, m, 1));
+    }
+    assert_eq!(c.dis.open_disputes_of(&pool), ids);
+    assert_eq!(c.dis.open_disputes_of_page(&pool, &0, &2), ids.slice(0..2));
+    assert_eq!(c.dis.open_disputes_of_page(&pool, &2, &2), ids.slice(2..4));
+    assert_eq!(c.dis.open_disputes_of_page(&pool, &48, &10).len(), 2);
+    assert_eq!(c.dis.open_disputes_of_page(&pool, &u32::MAX, &2).len(), 0);
+    assert_eq!(c.dis.open_disputes_of_page(&(pool + 1), &0, &2).len(), 0);
+}
+
+#[test]
+fn concurrent_open_disputes_are_capped_per_pool() {
+    let c = setup();
+    let (pool, members) = dispute_pool(&c, 51);
+    let mut ids = SorobanVec::new(&c.env);
+    for m in &members[..50] {
+        ids.push_back(open(&c, pool, m, 1));
+    }
+    assert_eq!(c.dis.open_disputes_of(&pool), ids);
+    let last = &members[50];
+    assert_eq!(
+        try_dispute(&c, pool, last),
+        Some(disputes::Error::TooManyOpenDisputes as u32)
+    );
+    assert_eq!(c.dis.open_disputes_of(&pool).len(), 50);
+    // The cap is on open disputes: resolving one frees a slot, and the cap is per pool.
+    c.dis.resolve(
+        &c.arbiter,
+        &ids.get(0).unwrap(),
+        &Outcome::ReleaseToSupplier,
+        &h(&c.env, 4),
+    );
+    assert_eq!(c.dis.open_disputes_of(&pool).len(), 49);
+    assert!(try_dispute(&c, pool, last).is_none());
+    let other = c.pool(0);
+    assert_eq!(c.dis.open_disputes_of(&other).len(), 0);
 }
 
 #[test]
@@ -333,7 +398,7 @@ fn shortfall_with_tier_change_and_dispute_worked_example() {
     // Mirrors Worked Example 2 in docs/pricing-math.md
     let c = setup();
     let pool = c.pool(100); // 1.0% organizer fee
-    // 4 members commit standard 420 units
+                            // 4 members commit standard 420 units
     let t = c.fill_standard(pool);
     // Total units: 420, final price: 0.80 USDC (tier 3: 400 @ 0.80)
     let p = c.gb.pool(&pool);
@@ -374,7 +439,12 @@ fn shortfall_with_tier_change_and_dispute_worked_example() {
     assert_eq!(c.bal(&c.supplier) - 1_000 * USDC, 2_652_000_000);
 
     // Arbiter resolves dispute: RefundMember(10)
-    c.dis.resolve(&c.arbiter, &dis_id, &Outcome::RefundMember(10), &h(&c.env, 4));
+    c.dis.resolve(
+        &c.arbiter,
+        &dis_id,
+        &Outcome::RefundMember(10),
+        &h(&c.env, 4),
+    );
 
     // Drain refunds
     c.gb.push_refunds(&pool, &50);

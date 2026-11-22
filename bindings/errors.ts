@@ -10,6 +10,9 @@ export const ConfigErrors = {
   NoGuardian: 105,
   NoAdminProposal: 106,
   NotProposedAdmin: 107,
+  TooManyArbiters: 108,
+  TooManyAttestors: 109,
+  TooManyCategories: 110,
 } as const;
 
 export type ConfigErrorCode = (typeof ConfigErrors)[keyof typeof ConfigErrors];
@@ -92,6 +95,7 @@ export const DisputesErrors = {
   TooMuchEvidence: 410,
   Overflow: 411,
   AlreadyDisputed: 412,
+  TooManyOpenDisputes: 413,
 } as const;
 
 export type DisputesErrorCode = (typeof DisputesErrors)[keyof typeof DisputesErrors];

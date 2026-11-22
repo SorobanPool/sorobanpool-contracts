@@ -248,7 +248,5 @@ mod test {
         );
         assert_eq!(tier_index(&extreme_tiers, u32::MAX), Some(1));
         assert!(validate_tiers(&extreme_tiers, 1, u32::MAX));
-
-
     }
 }

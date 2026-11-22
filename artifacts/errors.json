@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "contractsVersion": "49de331",
+  "contractsVersion": "8b143a1",
   "errors": [
     {
       "code": 100,
@@ -51,6 +51,11 @@
       "code": 109,
       "contract": "config",
       "name": "TooManyAttestors"
+    },
+    {
+      "code": 110,
+      "contract": "config",
+      "name": "TooManyCategories"
     },
     {
       "code": 200,
@@ -386,6 +391,11 @@
       "code": 412,
       "contract": "disputes",
       "name": "AlreadyDisputed"
+    },
+    {
+      "code": 413,
+      "contract": "disputes",
+      "name": "TooManyOpenDisputes"
     },
     {
       "code": 500,

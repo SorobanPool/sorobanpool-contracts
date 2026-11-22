@@ -537,8 +537,11 @@ fn resolve(env, arbiter: Address, dispute_id: u64, outcome: Outcome, reasoning_h
 fn timeout(env, dispute_id: u64);                                          // permissionless after SLA
 fn dispute(env, id: u64) -> Dispute;
 fn open_disputes_of(env, pool_id: u64) -> Vec<u64>;
+fn open_disputes_of_page(env, pool_id: u64, start: u32, limit: u32) -> Vec<u64>; // paged view
 ```
 Arbiter cannot resolve a dispute on a pool they organized, supplied or joined (checked on-chain).
+At most 50 disputes may be open per pool (`TooManyOpenDisputes`, 413); resolving or timing one out frees a slot.
+`open_disputes_of` is unchanged for existing callers and is bounded by that cap; use `open_disputes_of_page` to walk the list in pages.
 
 **supplier_bond**
 ```rust

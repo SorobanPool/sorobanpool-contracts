@@ -77,6 +77,7 @@ Generated from the `Error` enums in each contract (namespaced: config 100s, regi
 | 410 | disputes | TooMuchEvidence |
 | 411 | disputes | Overflow |
 | 412 | disputes | AlreadyDisputed |
+| 413 | disputes | TooManyOpenDisputes |
 | 500 | supplier_bond | InvalidAmount |
 | 501 | supplier_bond | InsufficientFreeBond |
 | 502 | supplier_bond | NotGroupBuy |

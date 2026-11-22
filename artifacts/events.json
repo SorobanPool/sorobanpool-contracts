@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "contractsVersion": "49de331",
+  "contractsVersion": "8b143a1",
   "events": [
     {
       "contract": "config",
