@@ -100,6 +100,8 @@ pub struct Pool {
     pub owed_total: i128,
     pub refunds_paid: i128,
     pub state: PoolState,
+    /// Tier indices that have already emitted tier_up events (for idempotency).
+    pub emitted_tiers: Vec<u32>,
 }
 
 #[contracttype]

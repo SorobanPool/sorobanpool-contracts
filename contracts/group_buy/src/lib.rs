@@ -401,13 +401,18 @@ fn add_units(env: &Env, member: &Address, pool_id: u64, units: u32, is_increase:
     save_commit(env, pool_id, &c);
     let after_tier = tier_index(&pool.terms.tiers, new_total);
     if after_tier != before_tier {
-        emit(
-            env,
-            C,
-            symbol_short!("tier_up"),
-            pool_id,
-            (after_tier.unwrap_or(0), new_total),
-        );
+        // Only emit tier_up once per (pool, tier) for idempotency (Issue #45)
+        let tier_num = after_tier.unwrap_or(0);
+        if !pool.emitted_tiers.contains(&tier_num) {
+            emit(
+                env,
+                C,
+                symbol_short!("tier_up"),
+                pool_id,
+                (tier_num, new_total),
+            );
+            pool.emitted_tiers.push_back(tier_num);
+        }
     }
     let ev = if is_increase {
         symbol_short!("commit_up")
@@ -541,6 +546,7 @@ impl GroupBuy {
             owed_total: 0,
             refunds_paid: 0,
             state: PoolState::Open,
+            emitted_tiers: Vec::new(&env),
         };
         save_pool(&env, &pool);
         emit(

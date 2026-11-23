@@ -151,6 +151,13 @@ impl Ctx {
         }
     }
 
+    /// Create a perishable pool terms (72h dispute window instead of 48h)
+    pub fn terms_perishable(&self) -> PoolTerms {
+        let mut terms = self.terms();
+        terms.perishable = true;
+        terms
+    }
+
     pub fn pool(&self, organizer_fee_bp: u32) -> u64 {
         self.gb.create_pool(
             &self.organizer,
