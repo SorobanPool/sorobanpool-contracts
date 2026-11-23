@@ -49,9 +49,12 @@ export type Role = {tag: "Trader", values: void} | {tag: "Organizer", values: vo
 export type Status = {tag: "Unregistered", values: void} | {tag: "Registered", values: void} | {tag: "Verified", values: void} | {tag: "Suspended", values: void} | {tag: "Closed", values: void};
 
 export interface Client {
-  /** Returns statuses in input order; maximum batch size is 64. */
-  statuses: ({users, role}: {users: Array<string>, role: Role}, options?: MethodOptions) => Promise<AssembledTransaction<Array<Status>>>
+  /**
+   * Construct and simulate a close transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Closes a participant role. A later register starts that role fresh; reputation is separate.
+   */
   close: ({admin, user, role, reason}: {admin: string, user: string, role: Role, reason: string}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+
   /**
    * Construct and simulate a level transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
@@ -85,6 +88,12 @@ export interface Client {
   register: ({user, role, profile_hash, cluster}: {user: string, role: Role, profile_hash: Buffer, cluster: Option<string>}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
 
   /**
+   * Construct and simulate a statuses transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Returns statuses in input order. Batches are capped to keep RPC and host costs bounded.
+   */
+  statuses: ({users, role}: {users: Array<string>, role: Role}, options?: MethodOptions) => Promise<AssembledTransaction<Array<Status>>>
+
+  /**
    * Construct and simulate a unsuspend transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
   unsuspend: ({admin, user, role}: {admin: string, user: string, role: Role}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
@@ -114,13 +123,15 @@ export class Client extends ContractClient {
   }
   constructor(public readonly options: ContractClientOptions) {
     super(
-      new ContractSpec([ "AAAABAAAAAAAAAAAAAAABUVycm9yAAAAAAAABwAAAAAAAAARQWxyZWFkeVJlZ2lzdGVyZWQAAAAAAADIAAAAAAAAAA1Ob3RSZWdpc3RlcmVkAAAAAAAAyQAAAAAAAAALTm90QXR0ZXN0b3IAAAAAygAAAAAAAAAITm90QWRtaW4AAADLAAAAAAAAABNOb3RBdXRob3JpemVkQ2FsbGVyAAAAAMwAAAAAAAAADEludmFsaWRMZXZlbAAAAM0AAAAAAAAACUJhZFN0YXR1cwAAAAAAAM4=",
+      new ContractSpec([ "AAAABAAAAAAAAAAAAAAABUVycm9yAAAAAAAACAAAAAAAAAARQWxyZWFkeVJlZ2lzdGVyZWQAAAAAAADIAAAAAAAAAA1Ob3RSZWdpc3RlcmVkAAAAAAAAyQAAAAAAAAALTm90QXR0ZXN0b3IAAAAAygAAAAAAAAAITm90QWRtaW4AAADLAAAAAAAAABNOb3RBdXRob3JpemVkQ2FsbGVyAAAAAMwAAAAAAAAADEludmFsaWRMZXZlbAAAAM0AAAAAAAAACUJhZFN0YXR1cwAAAAAAAM4AAAAAAAAADUJhdGNoVG9vTGFyZ2UAAAAAAADP",
+        "AAAAAAAAAFtDbG9zZXMgYSBwYXJ0aWNpcGFudCByb2xlLiBBIGxhdGVyIHJlZ2lzdGVyIHN0YXJ0cyB0aGF0IHJvbGUgZnJlc2g7IHJlcHV0YXRpb24gaXMgc2VwYXJhdGUuAAAAAAVjbG9zZQAAAAAAAAQAAAAAAAAABWFkbWluAAAAAAAAEwAAAAAAAAAEdXNlcgAAABMAAAAAAAAABHJvbGUAAAfQAAAABFJvbGUAAAAAAAAABnJlYXNvbgAAAAAAEQAAAAA=",
         "AAAAAAAAAAAAAAAFbGV2ZWwAAAAAAAACAAAAAAAAAAR1c2VyAAAAEwAAAAAAAAAEcm9sZQAAB9AAAAAEUm9sZQAAAAEAAAAE",
         "AAAAAAAAAERXcml0ZXMgYSB2ZXJpZmljYXRpb24gaGFzaCBhbmQgbGV2ZWwuIExldmVsIDAgaXMgbm90IGEgdmVyaWZpY2F0aW9uLgAAAAZhdHRlc3QAAAAAAAUAAAAAAAAACGF0dGVzdG9yAAAAEwAAAAAAAAAEdXNlcgAAABMAAAAAAAAABHJvbGUAAAfQAAAABFJvbGUAAAAAAAAACHZlcl9oYXNoAAAD7gAAACAAAAAAAAAABWxldmVsAAAAAAAABAAAAAA=",
         "AAAAAAAAAAAAAAAGcmV2b2tlAAAAAAAEAAAAAAAAAAVhZG1pbgAAAAAAABMAAAAAAAAABHVzZXIAAAATAAAAAAAAAARyb2xlAAAH0AAAAARSb2xlAAAAAAAAAAZyZWFzb24AAAAAABEAAAAA",
         "AAAAAAAAAAAAAAAGc3RhdHVzAAAAAAACAAAAAAAAAAR1c2VyAAAAEwAAAAAAAAAEcm9sZQAAB9AAAAAEUm9sZQAAAAEAAAfQAAAABlN0YXR1cwAA",
         "AAAAAAAAADFBZG1pbiwgb3IgdGhlIGBncm91cF9idXlgIC8gYGRpc3B1dGVzYCBjb250cmFjdHMuAAAAAAAAB3N1c3BlbmQAAAAABAAAAAAAAAAGY2FsbGVyAAAAAAATAAAAAAAAAAR1c2VyAAAAEwAAAAAAAAAEcm9sZQAAB9AAAAAEUm9sZQAAAAAAAAAGcmVhc29uAAAAAAARAAAAAA==",
         "AAAAAAAAAAAAAAAIcmVnaXN0ZXIAAAAEAAAAAAAAAAR1c2VyAAAAEwAAAAAAAAAEcm9sZQAAB9AAAAAEUm9sZQAAAAAAAAAMcHJvZmlsZV9oYXNoAAAD7gAAACAAAAAAAAAAB2NsdXN0ZXIAAAAD6AAAABEAAAAA",
+        "AAAAAAAAAFdSZXR1cm5zIHN0YXR1c2VzIGluIGlucHV0IG9yZGVyLiBCYXRjaGVzIGFyZSBjYXBwZWQgdG8ga2VlcCBSUEMgYW5kIGhvc3QgY29zdHMgYm91bmRlZC4AAAAACHN0YXR1c2VzAAAAAgAAAAAAAAAFdXNlcnMAAAAAAAPqAAAAEwAAAAAAAAAEcm9sZQAAB9AAAAAEUm9sZQAAAAEAAAPqAAAH0AAAAAZTdGF0dXMAAA==",
         "AAAAAAAAAAAAAAAJdW5zdXNwZW5kAAAAAAAAAwAAAAAAAAAFYWRtaW4AAAAAAAATAAAAAAAAAAR1c2VyAAAAEwAAAAAAAAAEcm9sZQAAB9AAAAAEUm9sZQAAAAA=",
         "AAAAAAAAAAAAAAAKY2x1c3Rlcl9vZgAAAAAAAQAAAAAAAAAEdXNlcgAAABMAAAABAAAD6AAAABE=",
         "AAAAAAAAAAAAAAANX19jb25zdHJ1Y3RvcgAAAAAAAAEAAAAAAAAABmNvbmZpZwAAAAAAEwAAAAA=",
@@ -130,14 +141,14 @@ export class Client extends ContractClient {
     )
   }
   public readonly fromJSON = {
-    statuses: this.txFromJSON<Array<Status>>,
     close: this.txFromJSON<null>,
-    level: this.txFromJSON<u32>,
+        level: this.txFromJSON<u32>,
         attest: this.txFromJSON<null>,
         revoke: this.txFromJSON<null>,
         status: this.txFromJSON<Status>,
         suspend: this.txFromJSON<null>,
         register: this.txFromJSON<null>,
+        statuses: this.txFromJSON<Array<Status>>,
         unsuspend: this.txFromJSON<null>,
         cluster_of: this.txFromJSON<Option<string>>
   }
