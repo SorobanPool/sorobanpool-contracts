@@ -64,6 +64,7 @@ pub enum Error {
     Overflow = 343,
     NotFinal = 344,
     SupplierIsParty = 345,
+    ZeroPageSize = 347,
 }
 
 #[contracttype]
@@ -892,11 +893,16 @@ impl GroupBuy {
 
     /// Permissionless, paged. Needed only after a shortfall; fills `allocated_units`.
     pub fn allocate_shortfall(env: Env, pool_id: u64, max: u32) -> bool {
+        if max == 0 {
+            fail::<()>(&env, Error::ZeroPageSize);
+        }
         let mut pool = load_pool(&env, pool_id);
         if pool.state != PoolState::Delivered {
             fail::<()>(&env, Error::WrongState);
         }
-        let was_done = pool.alloc_done;
+        if pool.alloc_done {
+            return true;
+        }
         let mut done = 0u32;
         while !pool.alloc_done && done < max {
             if pool.alloc_cursor >= pool.listed_members {
@@ -927,7 +933,7 @@ impl GroupBuy {
             }
         }
         save_pool(&env, &pool);
-        if pool.alloc_done && !was_done {
+        if pool.alloc_done {
             emit(
                 &env,
                 C,

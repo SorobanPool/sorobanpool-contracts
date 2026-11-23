@@ -27,6 +27,7 @@ pub enum Error {
     TooMuchEvidence = 410,
     Overflow = 411,
     AlreadyDisputed = 412,
+    EvidenceClosed = 413,
 }
 
 #[contracttype]
@@ -273,7 +274,7 @@ impl Disputes {
         party.require_auth();
         let mut d = load(&env, dispute_id);
         if d.resolved {
-            fail::<()>(&env, Error::AlreadyResolved);
+            fail::<()>(&env, Error::EvidenceClosed);
         }
         if side_of(&env, d.pool_id, &party).is_none()
             || (party != d.opener && {

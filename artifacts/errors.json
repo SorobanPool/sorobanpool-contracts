@@ -323,6 +323,11 @@
       "name": "DeadlineTooFar"
     },
     {
+      "code": 347,
+      "contract": "group_buy",
+      "name": "ZeroPageSize"
+    },
+    {
       "code": 400,
       "contract": "disputes",
       "name": "NotInitialised"
@@ -386,6 +391,11 @@
       "code": 412,
       "contract": "disputes",
       "name": "AlreadyDisputed"
+    },
+    {
+      "code": 413,
+      "contract": "disputes",
+      "name": "EvidenceClosed"
     },
     {
       "code": 500,

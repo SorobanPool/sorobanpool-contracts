@@ -117,7 +117,7 @@ Orchestrates member/supplier disputes, escrow freezing, evidence submission, and
 | `Key::NextId` | Instance | `()` | `u64` | `open` | Keeper maintained | Bounded (1 entry) |
 | `Key::Dispute(u64)` | Persistent | `u64` (dispute_id) | `Dispute` | `open`, `resolve`, `timeout` | Threshold ~30d, extend ~60d | **Unbounded**: grows with disputes raised; $O(1)$ access |
 | `Key::PoolList(u64)` | Persistent | `u64` (pool_id) | `Vec<u64>` | `open` | Threshold ~30d, extend ~60d | Bounded per pool by member dispute limits |
-| `Key::Evidence(u64, Address)` | Persistent | `(u64, Address)` | `BytesN<32>` | Dispute parties (`add_evidence`) | Threshold ~30d, extend ~60d | Bounded to 1 evidence hash per party per dispute |
+| `Dispute.evidence` | Persistent (inside `Key::Dispute(u64)`) | dispute id | `Vec<BytesN<32>>` | Opener (`open`) and dispute parties (`add_evidence`) | Threshold ~30d, extend ~60d | Bounded to `MAX_EVIDENCE = 20` hashes per dispute, including the opener's initial hash |
 
 ---
 

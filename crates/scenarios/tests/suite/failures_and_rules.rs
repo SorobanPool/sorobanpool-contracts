@@ -46,6 +46,47 @@ fn allocation_can_be_paged() {
 }
 
 #[test]
+fn shortfall_allocation_handles_zero_pages_and_retries_for_30_members() {
+    let c = setup();
+    let pool = c.pool(0);
+    let members: Vec<Address> = (0..30).map(|_| c.trader()).collect();
+    for member in &members {
+        c.gb.commit(member, &pool, &10);
+    }
+    c.advance(3 * DAY);
+    c.gb.close(&pool);
+    c.deliver(pool, 250);
+
+    let zero_page_error = c
+        .gb
+        .try_allocate_shortfall(&pool, &0)
+        .err()
+        .and_then(|r| r.ok())
+        .map(|e| e.get_code());
+    assert_eq!(
+        zero_page_error,
+        Some(group_buy::Error::ZeroPageSize as u32)
+    );
+
+    assert!(!c.gb.allocate_shortfall(&pool, &10));
+    assert!(!c.gb.allocate_shortfall(&pool, &10));
+    assert!(c.gb.allocate_shortfall(&pool, &10));
+
+    let completed = c.gb.pool(&pool);
+    assert_eq!(completed.alloc_cursor, 30);
+    assert_eq!(completed.alloc_cum, 300);
+    assert_eq!(
+        members
+            .iter()
+            .map(|member| c.gb.allocated_units_of(&pool, member))
+            .sum::<u32>(),
+        250
+    );
+    assert!(c.gb.allocate_shortfall(&pool, &10));
+    assert_eq!(c.gb.pool(&pool), completed);
+}
+
+#[test]
 fn withdrawal_lock_and_tier_protection() {
     let c = setup();
     let pool = c.pool(0);

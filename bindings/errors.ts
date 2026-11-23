@@ -74,6 +74,7 @@ export const GroupBuyErrors = {
   NotFinal: 344,
   SupplierIsParty: 345,
   DeadlineTooFar: 346,
+  ZeroPageSize: 347,
 } as const;
 
 export type GroupBuyErrorCode = (typeof GroupBuyErrors)[keyof typeof GroupBuyErrors];
@@ -92,6 +93,7 @@ export const DisputesErrors = {
   TooMuchEvidence: 410,
   Overflow: 411,
   AlreadyDisputed: 412,
+  EvidenceClosed: 413,
 } as const;
 
 export type DisputesErrorCode = (typeof DisputesErrors)[keyof typeof DisputesErrors];

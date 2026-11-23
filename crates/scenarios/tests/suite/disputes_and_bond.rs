@@ -190,11 +190,65 @@ fn arbiter_conflicts_and_permissions() {
 fn evidence_from_parties_only() {
     let (c, pool, t) = delivered();
     let id = open(&c, pool, &t[0], 5);
+    assert_eq!(c.dis.dispute(&id).evidence.len(), 1);
     c.dis.add_evidence(&c.supplier, &id, &h(&c.env, 6));
     c.dis.add_evidence(&c.organizer, &id, &h(&c.env, 7));
     c.dis.add_evidence(&t[0], &id, &h(&c.env, 8));
     assert!(c.dis.try_add_evidence(&t[1], &id, &h(&c.env, 9)).is_err());
     assert_eq!(c.dis.dispute(&id).evidence.len(), 4);
+}
+
+#[test]
+fn evidence_is_capped_at_20_hashes_including_the_openers_hash() {
+    let (c, pool, t) = delivered();
+    let id = open(&c, pool, &t[0], 5);
+    for index in 0..19 {
+        let party = match index % 3 {
+            0 => &t[0],
+            1 => &c.supplier,
+            _ => &c.organizer,
+        };
+        c.dis.add_evidence(party, &id, &h(&c.env, index as u8 + 10));
+    }
+    assert_eq!(c.dis.dispute(&id).evidence.len(), 20);
+    let err = c
+        .dis
+        .try_add_evidence(&t[0], &id, &h(&c.env, 31))
+        .err()
+        .and_then(|r| r.ok())
+        .map(|e| e.get_code());
+    assert_eq!(err, Some(disputes::Error::TooMuchEvidence as u32));
+}
+
+#[test]
+fn evidence_is_rejected_after_resolution_and_timeout() {
+    let (c, pool, t) = delivered();
+    let resolved_id = open(&c, pool, &t[0], 5);
+    c.dis.resolve(
+        &c.arbiter,
+        &resolved_id,
+        &Outcome::ReleaseToSupplier,
+        &h(&c.env, 4),
+    );
+    let err = c
+        .dis
+        .try_add_evidence(&t[0], &resolved_id, &h(&c.env, 6))
+        .err()
+        .and_then(|r| r.ok())
+        .map(|e| e.get_code());
+    assert_eq!(err, Some(disputes::Error::EvidenceClosed as u32));
+
+    let (c, pool, t) = delivered();
+    let timed_out_id = open(&c, pool, &t[0], 5);
+    c.advance(5 * DAY + 1);
+    c.dis.timeout(&timed_out_id);
+    let err = c
+        .dis
+        .try_add_evidence(&t[0], &timed_out_id, &h(&c.env, 6))
+        .err()
+        .and_then(|r| r.ok())
+        .map(|e| e.get_code());
+    assert_eq!(err, Some(disputes::Error::EvidenceClosed as u32));
 }
 
 #[test]
@@ -411,4 +465,65 @@ fn shortfall_with_tier_change_and_dispute_worked_example() {
     assert_eq!(c.bal(&t[2]) - 1_000 * USDC + 100 * USDC, 336_000_000);
     assert_eq!(c.bal(&t[3]) - 1_000 * USDC + 180 * USDC, 464_000_000);
     assert_eq!(c.bal(&c.gb.address), 0);
+}
+
+#[test]
+fn settlement_pays_unfrozen_remainder_before_supplier_wins_dispute() {
+    let (c, pool, t) = delivered();
+    let participants = [
+        &c.supplier,
+        &c.treasury,
+        &c.organizer,
+        &t[0],
+        &t[1],
+        &t[2],
+        &t[3],
+    ];
+    let conserved = || {
+        participants
+            .iter()
+            .map(|address| c.bal(address))
+            .sum::<i128>()
+            + c.bal(&c.gb.address)
+            + c.bal(&c.dis.address)
+    };
+    let total_before = conserved();
+
+    let id = open(&c, pool, &t[0], 10);
+    assert_eq!(c.gb.pool(&pool).frozen_amount, 10 * PRICE);
+    assert_eq!(conserved(), total_before);
+
+    c.advance(48 * 3600);
+    c.gb.settle(&pool);
+    let payable = 420 * PRICE - 10 * PRICE;
+    let settle_fee = payable * 150 / 10_000;
+    assert_eq!(c.bal(&c.supplier) - 1_000 * USDC, payable - settle_fee);
+    assert_eq!(c.bal(&c.treasury), settle_fee);
+    assert_eq!(c.bal(&c.gb.address), 400 * USDC - payable);
+    assert_eq!(conserved(), total_before);
+
+    let supplier_before_resolution = c.bal(&c.supplier);
+    let treasury_before_resolution = c.bal(&c.treasury);
+    c.dis
+        .resolve(&c.arbiter, &id, &Outcome::ReleaseToSupplier, &h(&c.env, 4));
+    let frozen_fee = 10 * PRICE * 150 / 10_000;
+    assert_eq!(
+        c.bal(&c.supplier) - supplier_before_resolution,
+        10 * PRICE - frozen_fee + DEPOSIT
+    );
+    assert_eq!(c.bal(&c.treasury) - treasury_before_resolution, frozen_fee);
+    assert_eq!(c.gb.pool(&pool).frozen_amount, 0);
+    assert_eq!(c.bal(&c.gb.address), 400 * USDC - 420 * PRICE);
+    assert_eq!(conserved(), total_before);
+
+    for member in &t {
+        c.gb.claim_refund(member, &pool);
+    }
+    assert_eq!(c.bal(&c.gb.address), 0);
+    assert_eq!(
+        c.bal(&c.treasury),
+        420 * PRICE * 150 / 10_000,
+        "fees across settlement and dispute resolution equal the fee on the full supplier release"
+    );
+    assert_eq!(conserved(), total_before);
 }

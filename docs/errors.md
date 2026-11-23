@@ -37,6 +37,7 @@ modes.
 | 304 | group_buy | NotVerified |
 | 305 | group_buy | DeadlineInPast |
 | 346 | group_buy | DeadlineTooFar |
+| 347 | group_buy | ZeroPageSize |
 | 306 | group_buy | FeeTooHigh |
 | 307 | group_buy | PoolTooLarge |
 | 308 | group_buy | PoolNotFound |
@@ -90,6 +91,7 @@ modes.
 | 410 | disputes | TooMuchEvidence |
 | 411 | disputes | Overflow |
 | 412 | disputes | AlreadyDisputed |
+| 413 | disputes | EvidenceClosed |
 | 500 | supplier_bond | InvalidAmount |
 | 501 | supplier_bond | InsufficientFreeBond |
 | 502 | supplier_bond | NotGroupBuy |
@@ -105,6 +107,10 @@ modes.
 | 703 | smart_wallet | TooManySigners |
 | 704 | smart_wallet | BadCredentialId |
 | 705 | smart_wallet | SignerNotActive |
+
+Disputes accept at most 20 evidence hashes, including the opener's initial hash.
+The 21st hash fails with `TooMuchEvidence` (410); evidence additions after
+resolution or timeout fail with `EvidenceClosed` (413).
 
 ## Exported Artifact Schema
 
