@@ -73,6 +73,7 @@ Read-only inspection methods do not mutate contract state:
   - [`payout_preview`](../contracts/group_buy/src/lib.rs): returns breakdown of supplier payout and fees before settlement.
   - [`allocated_units_of`](../contracts/group_buy/src/lib.rs): returns received unit allocation for a member post-delivery.
   - [`confirm_deadline`](../contracts/group_buy/src/lib.rs): returns delivery confirmation deadline timestamp.
+  - [`dispute_deadline`](../contracts/group_buy/src/lib.rs): returns dispute window end timestamp (perishable-aware).
   - [`refundable_of`](../contracts/group_buy/src/lib.rs): returns total outstanding claimable refund for a member.
   - [`refunds_pending`](../contracts/group_buy/src/lib.rs): returns `(remaining_members, remaining_amount)` for keeper planning.
   - [`escrow_invariant`](../contracts/group_buy/src/lib.rs): returns `(expected, actual)` escrow balances for integrity monitoring.
