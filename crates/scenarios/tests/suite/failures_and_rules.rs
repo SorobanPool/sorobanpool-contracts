@@ -81,9 +81,16 @@ fn commit_withdraw_re_commit_with_2h_lock() {
     let params = c.cfg.get_params();
     let member = c.trader();
     
-    // Initial commit
-    c.gb.commit(&member, &pool, &100);
-    let initial_paid = 100 * USDC;
+    // Start with a pool that has enough commitments to establish a tier
+    // Add other members first to establish the pool
+    let other1 = c.trader();
+    let other2 = c.trader();
+    c.gb.commit(&other1, &pool, &150); // 150 units
+    c.gb.commit(&other2, &pool, &100); // 250 total - tier 2
+    
+    // Now our test member joins
+    c.gb.commit(&member, &pool, &100); // 350 total - still tier 2
+    let initial_paid = 100 * 9_000_000; // tier 2 price (0.90 USDC = 9M stroops)
     assert_eq!(c.gb.commitment(&pool, &member).unwrap().paid, initial_paid);
     
     let p = c.gb.pool(&pool);
@@ -91,22 +98,21 @@ fn commit_withdraw_re_commit_with_2h_lock() {
     
     // Withdraw just before the lock (deadline - lock - 1 second) - should succeed
     c.set_time(lock_starts_at - 1);
+    
+    // Check that withdrawal won't lower tier (350 -> 250 stays in tier 2)
+    assert_eq!(c.gb.pool(&pool).total_units, 350);
+    
     let balance_before = c.bal(&member);
     c.gb.withdraw_commitment(&member, &pool);
     assert_eq!(c.bal(&member) - balance_before, initial_paid);
     assert_eq!(c.gb.commitment(&pool, &member).unwrap().units, 0);
+    assert_eq!(c.gb.pool(&pool).total_units, 250);
     
     // Re-commit after withdrawal - should charge current tier ceiling price
-    // Add more members to establish a tier
-    let other1 = c.trader();
-    let other2 = c.trader();
-    c.gb.commit(&other1, &pool, &150); // Pool now has 150 units
-    c.gb.commit(&other2, &pool, &100); // Pool now has 250 units (tier 2)
-    
-    // Member re-commits at the current (tier 2) ceiling price
+    // Pool is at 250 units (tier 2), so new commits pay tier 2 ceiling price
     let (tier_idx, tier_price) = c.gb.current_tier(&pool);
     assert_eq!(tier_idx, 1); // tier 2 (index 1)
-    assert_eq!(tier_price, 90_000); // 0.9 USDC in stroops
+    assert_eq!(tier_price, 9_000_000); // 0.9 USDC = 9M stroops
     
     c.gb.commit(&member, &pool, &50);
     let new_paid = c.gb.commitment(&pool, &member).unwrap().paid;

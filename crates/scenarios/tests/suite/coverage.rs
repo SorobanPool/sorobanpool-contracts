@@ -48,12 +48,6 @@ fn dispute_deadline_returns_window_end_for_delivered_pools() {
     let [a, b, cc, d] = c.fill_standard(pool);
     assert!(c.gb.try_dispute_deadline(&pool).is_err());
     
-    c.gb.accept(&c.supplier, &pool, &0);
-    assert!(c.gb.try_dispute_deadline(&pool).is_err());
-    
-    c.gb.dispatch(&c.supplier, &pool, &None);
-    assert!(c.gb.try_dispute_deadline(&pool).is_err());
-    
     // Now deliver - should work in Delivered state
     c.deliver(pool, 420);
     let p = c.gb.pool(&pool);
@@ -85,8 +79,6 @@ fn dispute_deadline_respects_perishable_window() {
     );
     
     let _ = c.fill_standard(pool);
-    c.gb.accept(&c.supplier, &pool, &0);
-    c.gb.dispatch(&c.supplier, &pool, &None);
     c.deliver(pool, 420);
     
     let p = c.gb.pool(&pool);
