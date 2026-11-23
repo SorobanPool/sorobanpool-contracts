@@ -123,12 +123,46 @@ fn correction_is_admin_only_and_bounded() {
     let (env, c, gb, admin) = setup();
     let who = Address::generate(&env);
     rec(&c, &gb, &who, Role::Supplier, symbol_short!("settled"), 2);
-    c.correct(&admin, &who, &Role::Supplier, &symbol_short!("settled"), &1, &symbol_short!("fix"));
+    c.correct(
+        &admin,
+        &who,
+        &Role::Supplier,
+        &symbol_short!("settled"),
+        &1,
+        &symbol_short!("fix"),
+    );
     assert_eq!(c.stats(&who, &Role::Supplier).pools_settled, 1);
     let stranger = Address::generate(&env);
-    assert!(c.try_correct(&stranger, &who, &Role::Supplier, &symbol_short!("settled"), &1, &symbol_short!("fix")).is_err());
-    assert!(c.try_correct(&admin, &who, &Role::Supplier, &symbol_short!("settled"), &1001, &symbol_short!("fix")).is_err());
-    assert!(c.try_correct(&admin, &who, &Role::Supplier, &symbol_short!("settled"), &2, &symbol_short!("fix")).is_err());
+    assert!(c
+        .try_correct(
+            &stranger,
+            &who,
+            &Role::Supplier,
+            &symbol_short!("settled"),
+            &1,
+            &symbol_short!("fix")
+        )
+        .is_err());
+    assert!(c
+        .try_correct(
+            &admin,
+            &who,
+            &Role::Supplier,
+            &symbol_short!("settled"),
+            &1001,
+            &symbol_short!("fix")
+        )
+        .is_err());
+    assert!(c
+        .try_correct(
+            &admin,
+            &who,
+            &Role::Supplier,
+            &symbol_short!("settled"),
+            &2,
+            &symbol_short!("fix")
+        )
+        .is_err());
 }
 
 #[test]

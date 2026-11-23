@@ -44,17 +44,17 @@ fn dispute_deadline_returns_window_end_for_delivered_pools() {
     let pool = c.pool(100);
     // Cannot call dispute_deadline before Delivered
     assert!(c.gb.try_dispute_deadline(&pool).is_err());
-    
+
     let [a, b, cc, d] = c.fill_standard(pool);
     assert!(c.gb.try_dispute_deadline(&pool).is_err());
-    
+
     // Now deliver - should work in Delivered state
     c.deliver(pool, 420);
     let p = c.gb.pool(&pool);
     let params = c.cfg.get_params();
     let expected_deadline = p.delivered_at + params.confirm_window_secs;
     assert_eq!(c.gb.dispute_deadline(&pool), expected_deadline);
-    
+
     // Should also work in Settled state
     for m in [&a, &b, &cc, &d] {
         c.gb.confirm_pickup(m, &pool);
@@ -77,10 +77,10 @@ fn dispute_deadline_respects_perishable_window() {
         &None,
         &(c.now() + DAY),
     );
-    
+
     let _ = c.fill_standard(pool);
     c.deliver(pool, 420);
-    
+
     let p = c.gb.pool(&pool);
     let params = c.cfg.get_params();
     let expected_deadline = p.delivered_at + params.perishable_confirm_window_secs;
@@ -187,26 +187,26 @@ fn commit_limits_are_enforced() {
 fn max_members_per_pool_enforced_at_201() {
     let c = setup();
     let pool = c.pool(0);
-    
+
     // Add 200 members (the default max_members_per_pool limit)
     let members: Vec<Address> = (0..200).map(|_| c.trader()).collect();
     for member in &members {
         c.gb.commit(member, &pool, &1); // Each commits 1 unit
     }
-    
+
     let p = c.gb.pool(&pool);
     assert_eq!(p.member_count, 200);
     assert_eq!(p.listed_members, 200);
-    
+
     // The 201st distinct member should be rejected with TooManyMembers error
     let member_201 = c.trader();
     assert!(c.gb.try_commit(&member_201, &pool, &1).is_err());
-    
+
     // But an existing member can still increase their commitment
     c.gb.increase(&members[0], &pool, &5);
     let commitment = c.gb.commitment(&pool, &members[0]).unwrap();
     assert_eq!(commitment.units, 6); // 1 initial + 5 increase
-    
+
     // Verify the limit is correctly documented in params
     let params = c.cfg.get_params();
     assert_eq!(params.max_members_per_pool, 200);

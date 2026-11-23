@@ -110,7 +110,10 @@ fn attestation_levels_are_bounded_per_role() {
         assert_eq!(c.reg.level(&user, &role), max);
         let next = Address::generate(&c.env);
         c.reg.register(&next, &role, &h(&c.env, 1), &None);
-        assert!(c.reg.try_attest(&attestor, &next, &role, &h(&c.env, 3), &(max + 1)).is_err());
+        assert!(c
+            .reg
+            .try_attest(&attestor, &next, &role, &h(&c.env, 3), &(max + 1))
+            .is_err());
     }
 }
 
@@ -120,10 +123,18 @@ fn statuses_preserve_order_and_are_bounded() {
     let registered = Address::generate(&c.env);
     let suspended = Address::generate(&c.env);
     let unknown = Address::generate(&c.env);
-    c.reg.register(&registered, &Role::Trader, &h(&c.env, 1), &None);
-    c.reg.register(&suspended, &Role::Trader, &h(&c.env, 2), &None);
-    c.reg.suspend(&c.admin, &suspended, &Role::Trader, &symbol_short!("test"));
-    let users = vec![&c.env, registered.clone(), suspended.clone(), unknown.clone()];
+    c.reg
+        .register(&registered, &Role::Trader, &h(&c.env, 1), &None);
+    c.reg
+        .register(&suspended, &Role::Trader, &h(&c.env, 2), &None);
+    c.reg
+        .suspend(&c.admin, &suspended, &Role::Trader, &symbol_short!("test"));
+    let users = vec![
+        &c.env,
+        registered.clone(),
+        suspended.clone(),
+        unknown.clone(),
+    ];
     let statuses = c.reg.statuses(&users, &Role::Trader);
     assert_eq!(statuses.len(), 3);
     assert_eq!(statuses.get(0), Some(Status::Registered));
@@ -141,7 +152,8 @@ fn closed_roles_can_reregister_without_touching_reputation_storage() {
     let c = setup();
     let user = Address::generate(&c.env);
     c.reg.register(&user, &Role::Trader, &h(&c.env, 1), &None);
-    c.reg.close(&c.admin, &user, &Role::Trader, &symbol_short!("retired"));
+    c.reg
+        .close(&c.admin, &user, &Role::Trader, &symbol_short!("retired"));
     c.reg.register(&user, &Role::Trader, &h(&c.env, 9), &None);
     assert_eq!(c.reg.status(&user, &Role::Trader), Status::Registered);
     assert_eq!(c.reg.level(&user, &Role::Trader), 0);

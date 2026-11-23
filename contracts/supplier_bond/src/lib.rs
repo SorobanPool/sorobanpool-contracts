@@ -171,7 +171,13 @@ impl SupplierBond {
                 &slashed,
             );
         }
-        emit(&env, C, symbol_short!("slashed"), supplier, (amount, slashed));
+        emit(
+            &env,
+            C,
+            symbol_short!("slashed"),
+            supplier,
+            (amount, slashed),
+        );
         slashed
     }
 

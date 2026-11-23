@@ -355,7 +355,7 @@ fn shortfall_with_tier_change_and_dispute_worked_example() {
     // Mirrors Worked Example 2 in docs/pricing-math.md
     let c = setup();
     let pool = c.pool(100); // 1.0% organizer fee
-    // 4 members commit standard 420 units
+                            // 4 members commit standard 420 units
     let t = c.fill_standard(pool);
     // Total units: 420, final price: 0.80 USDC (tier 3: 400 @ 0.80)
     let p = c.gb.pool(&pool);
@@ -396,7 +396,12 @@ fn shortfall_with_tier_change_and_dispute_worked_example() {
     assert_eq!(c.bal(&c.supplier) - 1_000 * USDC, 2_652_000_000);
 
     // Arbiter resolves dispute: RefundMember(10)
-    c.dis.resolve(&c.arbiter, &dis_id, &Outcome::RefundMember(10), &h(&c.env, 4));
+    c.dis.resolve(
+        &c.arbiter,
+        &dis_id,
+        &Outcome::RefundMember(10),
+        &h(&c.env, 4),
+    );
 
     // Drain refunds
     c.gb.push_refunds(&pool, &50);

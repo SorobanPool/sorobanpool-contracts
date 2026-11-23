@@ -47,8 +47,14 @@ fn hard_caps_are_enforced() {
 fn hard_caps_view_matches_validation_limits() {
     let (_e, c, _) = setup();
     let caps = c.get_hard_caps();
-    assert_eq!(caps.platform_fee_bp, sp_common::types::caps::PLATFORM_FEE_BP);
-    assert_eq!(caps.max_organizer_fee_bp, sp_common::types::caps::ORGANIZER_FEE_BP);
+    assert_eq!(
+        caps.platform_fee_bp,
+        sp_common::types::caps::PLATFORM_FEE_BP
+    );
+    assert_eq!(
+        caps.max_organizer_fee_bp,
+        sp_common::types::caps::ORGANIZER_FEE_BP
+    );
     assert_eq!(caps.basis_points, 10_000);
     let mut p = c.get_params();
     p.platform_fee_bp = caps.platform_fee_bp + 1;

@@ -6,7 +6,7 @@ use soroban_sdk::{
 use sp_common::clients::{ConfigClient, GroupBuyClient, ReputationClient};
 use sp_common::events::{self, emit};
 use sp_common::keys;
-use sp_common::math::{bp_of, mul_div_floor, round_supplier_payable};
+use sp_common::math::{bp_of, round_supplier_payable};
 use sp_common::ttl::bump_persistent;
 use sp_common::types::{Dispute, DisputeReason, Outcome, Role};
 
