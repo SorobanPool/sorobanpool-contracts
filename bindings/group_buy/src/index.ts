@@ -79,7 +79,8 @@ export const Errors = {
   342: {message:"DisputeWindowClosed"},
   343: {message:"Overflow"},
   344: {message:"NotFinal"},
-  345: {message:"SupplierIsParty"}
+  345: {message:"SupplierIsParty"},
+  348: {message:"InvalidRejectReason"}
 }
 
 
@@ -215,7 +216,7 @@ export interface Client {
   /**
    * Construct and simulate a reject transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
-  reject: ({supplier, pool_id}: {supplier: string, pool_id: u64}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+  reject: ({supplier, pool_id, reason}: {supplier: string, pool_id: u64, reason?: Option<string>}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
 
   /**
    * Construct and simulate a settle transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.

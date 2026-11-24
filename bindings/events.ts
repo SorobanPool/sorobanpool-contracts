@@ -187,7 +187,7 @@ export interface GroupBuyRejectedEvent {
   contract: 'group_buy';
   event: 'rejected';
   key: bigint;
-  data: { supplier: string };
+  data: { supplier: string; reason?: string };
 }
 
 export interface GroupBuyAdvanceEvent {

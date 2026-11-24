@@ -1,6 +1,6 @@
 use scenarios::*;
 use soroban_sdk::testutils::{Address as _, Events as _};
-use soroban_sdk::{symbol_short, Address};
+use soroban_sdk::{symbol_short, Address, Symbol};
 use sp_common::types::{caps, PoolState, Role, Tier};
 
 #[test]
@@ -113,7 +113,7 @@ fn supplier_reject_refunds() {
     let c = setup();
     let pool = c.pool(0);
     c.fill_standard(pool);
-    c.gb.reject(&c.supplier, &pool);
+    c.gb.reject(&c.supplier, &pool, &None::<Symbol>);
     assert_eq!(c.gb.pool(&pool).state, PoolState::Failed);
     assert_eq!(c.gb.push_refunds(&pool, &10), 4);
     assert_eq!(c.bal(&c.gb.address), 0);
@@ -164,8 +164,7 @@ fn settled_delivery(offset_from_lead: i64) -> sp_common::types::RepStats {
         c.advance(lead - (-offset_from_lead) as u64);
     }
     c.gb.dispatch(&c.supplier, &pool, &None);
-    c.gb
-        .confirm_delivery(&c.organizer, &pool, &420, &h(&c.env, 6));
+    c.gb.confirm_delivery(&c.organizer, &pool, &420, &h(&c.env, 6));
     c.advance(48 * DAY + 1);
     c.gb.settle(&pool);
     c.rep.stats(&c.supplier, &Role::Supplier)
@@ -250,7 +249,8 @@ fn create_pool_validation() {
         .is_err());
     // supplier cannot organize their own pool
     assert_eq!(
-        c.gb.try_create_pool(&c.supplier, &c.terms(), &h(&c.env, 7), &0, &None, &dl).err(),
+        c.gb.try_create_pool(&c.supplier, &c.terms(), &h(&c.env, 7), &0, &None, &dl)
+            .err(),
         Some(Ok(soroban_sdk::Error::from_contract_error(
             group_buy::Error::OrganizerIsSupplier as u32
         )))
@@ -331,7 +331,8 @@ fn suspended_participants_keep_existing_pool_exits_but_not_new_activity() {
     let pool = c.pool(0);
     let trader = c.trader();
     c.gb.commit(&trader, &pool, &10);
-    c.reg.suspend(&c.admin, &trader, &Role::Trader, &symbol_short!("test"));
+    c.reg
+        .suspend(&c.admin, &trader, &Role::Trader, &symbol_short!("test"));
     assert!(c.gb.try_commit(&trader, &pool, &1).is_err());
     c.advance(3 * DAY);
     c.gb.close(&pool);
@@ -341,12 +342,32 @@ fn suspended_participants_keep_existing_pool_exits_but_not_new_activity() {
     let pool = c.pool(0);
     c.fill_standard(pool);
     c.gb.accept(&c.supplier, &pool, &0);
-    c.reg.suspend(&c.admin, &c.supplier, &Role::Supplier, &symbol_short!("test"));
+    c.reg.suspend(
+        &c.admin,
+        &c.supplier,
+        &Role::Supplier,
+        &symbol_short!("test"),
+    );
     c.gb.dispatch(&c.supplier, &pool, &None);
 
     let c = setup();
-    c.reg.suspend(&c.admin, &c.organizer, &Role::Organizer, &symbol_short!("test"));
-    assert!(c.gb.try_create_pool(&c.organizer, &c.terms(), &h(&c.env, 7), &0, &None, &(c.now() + DAY)).is_err());
+    c.reg.suspend(
+        &c.admin,
+        &c.organizer,
+        &Role::Organizer,
+        &symbol_short!("test"),
+    );
+    assert!(c
+        .gb
+        .try_create_pool(
+            &c.organizer,
+            &c.terms(),
+            &h(&c.env, 7),
+            &0,
+            &None,
+            &(c.now() + DAY)
+        )
+        .is_err());
 }
 
 #[test]
@@ -486,10 +507,9 @@ fn create_pool_fails_when_organizer_is_supplier() {
     let c = setup();
     let dl = c.now() + DAY;
     // Organizer address matches supplier in terms
-    let err = c
-        .gb
-        .try_create_pool(&c.supplier, &c.terms(), &h(&c.env, 7), &0, &None, &dl)
-        .err();
+    let err =
+        c.gb.try_create_pool(&c.supplier, &c.terms(), &h(&c.env, 7), &0, &None, &dl)
+            .err();
     assert_eq!(
         err,
         Some(Ok(soroban_sdk::Error::from_contract_error(
@@ -500,10 +520,9 @@ fn create_pool_fails_when_organizer_is_supplier() {
     // Terms supplier set to organizer
     let mut terms = c.terms();
     terms.supplier = c.organizer.clone();
-    let err2 = c
-        .gb
-        .try_create_pool(&c.organizer, &terms, &h(&c.env, 7), &0, &None, &dl)
-        .err();
+    let err2 =
+        c.gb.try_create_pool(&c.organizer, &terms, &h(&c.env, 7), &0, &None, &dl)
+            .err();
     assert_eq!(
         err2,
         Some(Ok(soroban_sdk::Error::from_contract_error(
@@ -542,9 +561,8 @@ fn organizer_member_share_cap_and_sole_member_exemption() {
         },
     ];
     let dl = c.now() + 2 * DAY;
-    let pool = c
-        .gb
-        .create_pool(&c.organizer, &terms, &h(&c.env, 7), &0, &None, &dl);
+    let pool =
+        c.gb.create_pool(&c.organizer, &terms, &h(&c.env, 7), &0, &None, &dl);
 
     c.mint.mint(&c.organizer, &(1_000 * USDC));
 
@@ -553,9 +571,8 @@ fn organizer_member_share_cap_and_sole_member_exemption() {
     assert_eq!(c.gb.commitment(&pool, &c.organizer).unwrap().units, 60);
 
     // 2. When other members exist:
-    let pool2 = c
-        .gb
-        .create_pool(&c.organizer, &terms, &h(&c.env, 8), &0, &None, &dl);
+    let pool2 =
+        c.gb.create_pool(&c.organizer, &terms, &h(&c.env, 8), &0, &None, &dl);
     let trader = c.trader();
     c.gb.commit(&trader, &pool2, &10);
 
@@ -582,17 +599,15 @@ fn organizer_member_share_cap_and_sole_member_exemption() {
     );
 
     // 3. Ordinary member behaviour is unchanged: sole-member exemption and 50% cap
-    let pool3 = c
-        .gb
-        .create_pool(&c.organizer, &terms, &h(&c.env, 9), &0, &None, &dl);
+    let pool3 =
+        c.gb.create_pool(&c.organizer, &terms, &h(&c.env, 9), &0, &None, &dl);
     let trader1 = c.trader();
     // Sole member trader can commit 60 units (>50% of 100)
     c.gb.commit(&trader1, &pool3, &60);
     assert_eq!(c.gb.commitment(&pool3, &trader1).unwrap().units, 60);
 
-    let pool4 = c
-        .gb
-        .create_pool(&c.organizer, &terms, &h(&c.env, 10), &0, &None, &dl);
+    let pool4 =
+        c.gb.create_pool(&c.organizer, &terms, &h(&c.env, 10), &0, &None, &dl);
     let trader2 = c.trader();
     let trader3 = c.trader();
     c.gb.commit(&trader2, &pool4, &10);
@@ -608,3 +623,108 @@ fn organizer_member_share_cap_and_sole_member_exemption() {
     assert!(c.gb.try_commit(&trader3, &pool4, &50).is_ok());
 }
 
+#[test]
+fn organizer_fee_at_hard_cap_boundaries() {
+    let c = setup();
+    let default_max = c.cfg.get_params().max_organizer_fee_bp;
+    assert_eq!(default_max, 100);
+
+    // 1. Boundary: 0 bp is accepted
+    let p0 = c.pool(0);
+    assert_eq!(c.gb.pool(&p0).organizer_fee_bp, 0);
+
+    // 2. Boundary: configured maximum (100 bp) is accepted
+    let p_max = c.pool(default_max);
+    assert_eq!(c.gb.pool(&p_max).organizer_fee_bp, default_max);
+
+    // 3. Boundary: configured maximum + 1 (101 bp) is rejected with FeeTooHigh
+    let err_over_default =
+        c.gb.try_create_pool(
+            &c.organizer,
+            &c.terms(),
+            &h(&c.env, 11),
+            &(default_max + 1),
+            &None,
+            &(c.now() + 3 * DAY),
+        )
+        .err();
+    assert_eq!(
+        err_over_default,
+        Some(Ok(soroban_sdk::Error::from_contract_error(
+            group_buy::Error::FeeTooHigh as u32
+        )))
+    );
+
+    // 4. Admin raises max_organizer_fee_bp to the 200 bp hard cap
+    let mut p = c.cfg.get_params();
+    p.max_organizer_fee_bp = caps::ORGANIZER_FEE_BP;
+    c.cfg.set_params(&p);
+    assert_eq!(c.cfg.get_params().max_organizer_fee_bp, 200);
+
+    // Configured maximum at hard cap (200 bp) is accepted
+    let p_cap = c.pool(caps::ORGANIZER_FEE_BP);
+    assert_eq!(c.gb.pool(&p_cap).organizer_fee_bp, 200);
+
+    // One above the hard cap (201 bp) is rejected with FeeTooHigh
+    let err_over_cap =
+        c.gb.try_create_pool(
+            &c.organizer,
+            &c.terms(),
+            &h(&c.env, 12),
+            &(caps::ORGANIZER_FEE_BP + 1),
+            &None,
+            &(c.now() + 3 * DAY),
+        )
+        .err();
+    assert_eq!(
+        err_over_cap,
+        Some(Ok(soroban_sdk::Error::from_contract_error(
+            group_buy::Error::FeeTooHigh as u32
+        )))
+    );
+
+    // 5. Raising above the 200 bp hard cap fails in set_params
+    let mut p_too_high = c.cfg.get_params();
+    p_too_high.max_organizer_fee_bp = caps::ORGANIZER_FEE_BP + 1;
+    assert!(c.cfg.try_set_params(&p_too_high).is_err());
+}
+
+#[test]
+fn reject_reason_allow_list_and_event_payload() {
+    let c = setup();
+
+    // 1. Rejection with disallowed reason is rejected with InvalidRejectReason
+    let pool_bad = c.pool(0);
+    c.fill_standard(pool_bad);
+    let bad_reason = symbol_short!("invalid");
+    let err_bad_reason =
+        c.gb.try_reject(&c.supplier, &pool_bad, &Some(bad_reason))
+            .err();
+    assert_eq!(
+        err_bad_reason,
+        Some(Ok(soroban_sdk::Error::from_contract_error(
+            group_buy::Error::InvalidRejectReason as u32
+        )))
+    );
+
+    // 2. Rejection with allowed reason (no_stock) succeeds and emits reason
+    let pool_good = c.pool(0);
+    c.fill_standard(pool_good);
+    let good_reason = symbol_short!("no_stock");
+    c.gb.reject(&c.supplier, &pool_good, &Some(good_reason));
+    assert_eq!(c.gb.pool(&pool_good).state, PoolState::Failed);
+    assert!(
+        format!("{:?}", c.env.events().all()).contains("no_stock"),
+        "pool_rejected includes the reason in its payload"
+    );
+
+    // 3. Rejection with None defaults to 'other' and succeeds
+    let pool_none = c.pool(0);
+    c.fill_standard(pool_none);
+    c.gb.reject(&c.supplier, &pool_none, &None);
+    assert_eq!(c.gb.pool(&pool_none).state, PoolState::Failed);
+    assert!(
+        format!("{:?}", c.env.events().all()).contains("other"),
+        "pool_rejected includes the default other reason in its payload"
+    );
+}

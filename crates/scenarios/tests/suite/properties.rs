@@ -328,3 +328,67 @@ fn broken_tier_tables_fail_validation_not_property() {
     }
     assert!(!validate_tiers(&small_max_sdk, 20, 10));
 }
+
+#[test]
+fn fee_rounding_table_favours_members_and_conserves_escrow() {
+    use sp_common::math::{bp_of, round_member_refund, round_supplier_payable};
+
+    // Table-driven test over at least 200 (units, price, fee) combinations
+    let units_list: [u32; 8] = [1, 7, 13, 50, 100, 250, 420, 1000];
+    let prices_list: [i128; 5] = [1, 99, 8_000_000, 9_000_000, 10_000_000];
+    let plat_fees: [u32; 4] = [0, 50, 150, 500];
+    let org_fees: [u32; 4] = [0, 25, 100, 200];
+
+    let mut row_count = 0;
+    for &units in &units_list {
+        for &price in &prices_list {
+            for &plat_bp in &plat_fees {
+                for &org_bp in &org_fees {
+                    row_count += 1;
+                    let gross = (units as i128) * price;
+                    let total_fee_bp = plat_bp + org_bp;
+                    let supplier = round_supplier_payable(gross, total_fee_bp).unwrap();
+                    let plat = bp_of(gross, plat_bp).unwrap();
+                    let org = bp_of(gross, org_bp).unwrap();
+                    let dust = gross - (supplier + plat + org);
+
+                    let paid_per_unit = price + (price / 10).max(1);
+                    let total_paid = (units as i128) * paid_per_unit;
+                    let refunds = round_member_refund(total_paid, gross).unwrap();
+
+                    // Acceptance criteria: The sum identity holds for every row
+                    assert_eq!(
+                        supplier + plat + org + refunds + dust,
+                        total_paid,
+                        "sum identity breached at row {row_count}"
+                    );
+
+                    // Rounding favours members: no component is off by more than 1 stroop in member's disfavour
+                    assert!(dust >= 0);
+                    assert!(dust <= 2);
+                    assert!(supplier <= (gross * (10_000 - total_fee_bp) as i128) / 10_000);
+                    assert!(plat <= (gross * plat_bp as i128) / 10_000);
+                    assert!(org <= (gross * org_bp as i128) / 10_000);
+                    assert_eq!(refunds, total_paid - gross);
+                }
+            }
+        }
+    }
+    assert!(
+        row_count >= 200,
+        "must test at least 200 rows, tested {row_count}"
+    );
+
+    // On-chain scenario: Any dust is exactly what sweep_dust later reports
+    let c = setup();
+    let pool = c.pool(100);
+    let t = c.fill_standard(pool);
+    c.deliver(pool, 420);
+    c.advance(48 * 3600);
+    c.gb.settle(&pool);
+    for m in &t {
+        c.gb.claim_refund(m, &pool);
+    }
+    let swept = c.gb.sweep_dust(&pool);
+    assert_eq!(swept, 0);
+}

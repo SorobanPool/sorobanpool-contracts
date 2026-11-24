@@ -79,6 +79,7 @@ export const GroupBuyErrors = {
   SupplierIsParty: 345,
   DeadlineTooFar: 346,
   OrganizerIsSupplier: 347,
+  InvalidRejectReason: 348,
 } as const;
 
 export type GroupBuyErrorCode = (typeof GroupBuyErrors)[keyof typeof GroupBuyErrors];

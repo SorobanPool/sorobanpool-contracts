@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "contractsVersion": "a8cfea4",
+  "contractsVersion": "a5ebee2",
   "errors": [
     {
       "code": 100,
@@ -336,6 +336,11 @@
       "code": 347,
       "contract": "group_buy",
       "name": "OrganizerIsSupplier"
+    },
+    {
+      "code": 348,
+      "contract": "group_buy",
+      "name": "InvalidRejectReason"
     },
     {
       "code": 400,

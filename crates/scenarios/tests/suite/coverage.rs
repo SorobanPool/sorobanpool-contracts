@@ -1,7 +1,7 @@
 //! Read paths and guard rails not exercised by the flow tests.
 use scenarios::*;
 use soroban_sdk::testutils::Address as _;
-use soroban_sdk::Address;
+use soroban_sdk::{Address, Symbol};
 use sp_common::types::{DisputeReason, Outcome, PoolState};
 
 #[test]
@@ -82,7 +82,10 @@ fn state_guards_reject_out_of_order_calls() {
     assert!(c.gb.try_claim_refund(&stranger, &pool).is_err());
     assert!(c.gb.try_push_refunds(&pool, &5).is_err());
     assert!(c.gb.try_accept(&c.supplier, &pool, &0).is_err());
-    assert!(c.gb.try_reject(&c.supplier, &pool).is_err());
+    assert!(c
+        .gb
+        .try_reject(&c.supplier, &pool, &None::<Symbol>)
+        .is_err());
     assert!(c.gb.try_fail_accept(&pool).is_err());
     assert!(c.gb.try_dispatch(&c.supplier, &pool, &None).is_err());
     assert!(c.gb.try_fail_delivery(&pool).is_err());
@@ -99,7 +102,7 @@ fn state_guards_reject_out_of_order_calls() {
     c.gb.close_early(&c.organizer, &pool);
     assert!(c.gb.try_close_early(&c.organizer, &pool).is_err());
     assert!(c.gb.try_accept(&stranger, &pool, &0).is_err());
-    assert!(c.gb.try_reject(&stranger, &pool).is_err());
+    assert!(c.gb.try_reject(&stranger, &pool, &None::<Symbol>).is_err());
     assert!(c.gb.try_commit(&stranger, &pool, &1).is_err());
     assert!(c.gb.try_cancel_pool(&stranger, &pool).is_err());
     c.gb.accept(&c.supplier, &pool, &0);
@@ -251,4 +254,45 @@ fn repeated_sweep_dust_moves_zero() {
         treasury_before,
         "second sweep must not move any tokens to treasury"
     );
+}
+
+#[test]
+fn member_count_tracks_withdrawals_and_rejoining() {
+    let c = setup();
+    let pool = c.pool(0);
+
+    // Initial state: 0 members
+    assert_eq!(c.gb.pool(&pool).member_count, 0);
+
+    // Step 1: Member A commits 60 units -> member_count becomes 1
+    let m_a = c.trader();
+    c.gb.commit(&m_a, &pool, &60);
+    assert_eq!(c.gb.pool(&pool).member_count, 1);
+
+    // Step 2: Member B commits 30 units -> member_count becomes 2
+    let m_b = c.trader();
+    c.gb.commit(&m_b, &pool, &30);
+    assert_eq!(c.gb.pool(&pool).member_count, 2);
+
+    // Step 3: Member B withdraws all units (below lock, within tier 0)
+    // -> Pool.member_count decrements to 1
+    c.gb.withdraw_commitment(&m_b, &pool);
+    assert_eq!(c.gb.pool(&pool).member_count, 1);
+
+    // Step 4: Member B returns and commits 30 units again
+    // -> Member who withdraws and returns is counted once: member_count becomes 2
+    c.gb.commit(&m_b, &pool, &30);
+    assert_eq!(c.gb.pool(&pool).member_count, 2);
+
+    // Step 5: Member A withdraws all units -> member_count decrements to 1
+    c.gb.withdraw_commitment(&m_a, &pool);
+    assert_eq!(c.gb.pool(&pool).member_count, 1);
+
+    // Step 6: Member B withdraws all units -> member_count decrements to 0
+    c.gb.withdraw_commitment(&m_b, &pool);
+    assert_eq!(c.gb.pool(&pool).member_count, 0);
+
+    // Step 7: Member A returns -> member_count becomes 1
+    c.gb.commit(&m_a, &pool, &60);
+    assert_eq!(c.gb.pool(&pool).member_count, 1);
 }

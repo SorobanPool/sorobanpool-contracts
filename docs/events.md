@@ -25,7 +25,8 @@ Short symbols are limited to 9 characters, so some brief names are abbreviated. 
 | group_buy | `filled` | pool id | `(total_units, final_price)` |
 | group_buy | `expired` | pool id | total units |
 | group_buy | `cancelled` | pool id | caller |
-| group_buy | `accepted` / `rejected` | pool id | supplier |
+| group_buy | `accepted` | pool id | supplier |
+| group_buy | `rejected` | pool id | `(supplier, reason)` |
 | group_buy | `advance` | pool id | amount |
 | group_buy | `dispatch` | pool id | optional waybill hash |
 | group_buy | `failed` | pool id | `no_accept` or `no_deliv` |

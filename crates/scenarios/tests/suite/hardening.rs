@@ -1,7 +1,7 @@
 //! Regression tests for fund-safety findings from the November 2026 internal review (brief section 15, M6).
 use scenarios::*;
 use soroban_sdk::testutils::Address as _;
-use soroban_sdk::Address;
+use soroban_sdk::{Address, Symbol};
 use sp_common::types::{DisputeReason, Outcome, PoolState, Role, Status};
 
 const PRICE: i128 = USDC * 8 / 10;
@@ -114,7 +114,7 @@ fn two_supplier_failures_within_90_days_suspend_the_supplier() {
     let c = setup();
     let p1 = c.pool(0);
     c.fill_standard(p1);
-    c.gb.reject(&c.supplier, &p1);
+    c.gb.reject(&c.supplier, &p1, &None::<Symbol>);
     assert_eq!(c.reg.status(&c.supplier, &Role::Supplier), Status::Verified);
 
     c.advance(30 * DAY);
@@ -145,11 +145,11 @@ fn failures_more_than_90_days_apart_do_not_suspend() {
     let c = setup();
     let p1 = c.pool(0);
     c.fill_standard(p1);
-    c.gb.reject(&c.supplier, &p1);
+    c.gb.reject(&c.supplier, &p1, &None::<Symbol>);
     c.advance(100 * DAY);
     let p2 = c.pool(0);
     c.fill_standard(p2);
-    c.gb.reject(&c.supplier, &p2);
+    c.gb.reject(&c.supplier, &p2, &None::<Symbol>);
     assert_eq!(c.reg.status(&c.supplier, &Role::Supplier), Status::Verified);
 }
 

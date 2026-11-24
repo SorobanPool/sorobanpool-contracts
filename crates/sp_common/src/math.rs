@@ -279,4 +279,59 @@ mod test {
         assert_eq!(tier_index(&extreme_tiers, u32::MAX), Some(1));
         assert!(validate_tiers(&extreme_tiers, 1, u32::MAX));
     }
+
+    #[test]
+    fn table_driven_fee_rounding_favours_members_at_every_size() {
+        let units_range: [u32; 8] = [1, 7, 13, 50, 100, 250, 420, 1000];
+        let prices: [i128; 5] = [
+            1,          // 1 stroop
+            99,         // 99 stroops
+            8_000_000,  // 0.8 USDC
+            9_000_000,  // 0.9 USDC
+            10_000_000, // 1.0 USDC
+        ];
+        let platform_fees: [u32; 4] = [0, 50, 150, 500];
+        let organizer_fees: [u32; 4] = [0, 25, 100, 200];
+
+        let mut row_count = 0;
+        for &u in &units_range {
+            for &price in &prices {
+                for &plat_bp in &platform_fees {
+                    for &org_bp in &organizer_fees {
+                        row_count += 1;
+                        let gross = (u as i128) * price;
+                        let total_fee_bp = plat_bp + org_bp;
+                        let supplier = round_supplier_payable(gross, total_fee_bp).unwrap();
+                        let plat = bp_of(gross, plat_bp).unwrap();
+                        let org = bp_of(gross, org_bp).unwrap();
+
+                        let ceiling_p = price + (price / 10).max(1);
+                        let total_paid = (u as i128) * ceiling_p;
+                        let refunds = round_member_refund(total_paid, gross).unwrap();
+                        let dust = gross - (supplier + plat + org);
+
+                        assert!(dust >= 0, "dust must be non-negative: row {row_count}");
+                        assert!(dust <= 2, "dust must not exceed 2 stroops: got {dust}");
+
+                        // Acceptance criteria: The sum identity holds for every row
+                        assert_eq!(
+                            supplier + plat + org + refunds + dust,
+                            total_paid,
+                            "sum identity failed at row {row_count}"
+                        );
+
+                        // Rounding favours members: no component is off by more than 1 stroop in member's disfavour
+                        assert!(supplier <= (gross * (10_000 - total_fee_bp) as i128) / 10_000);
+                        assert!(plat <= (gross * plat_bp as i128) / 10_000);
+                        assert!(org <= (gross * org_bp as i128) / 10_000);
+                        assert_eq!(refunds, total_paid - gross);
+                    }
+                }
+            }
+        }
+        assert!(
+            row_count >= 200,
+            "must test at least 200 combinations, tested {row_count}"
+        );
+    }
 }

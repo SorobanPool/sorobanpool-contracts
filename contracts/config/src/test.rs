@@ -47,8 +47,14 @@ fn hard_caps_are_enforced() {
 fn hard_caps_view_matches_validation_limits() {
     let (_e, c, _) = setup();
     let caps = c.get_hard_caps();
-    assert_eq!(caps.platform_fee_bp, sp_common::types::caps::PLATFORM_FEE_BP);
-    assert_eq!(caps.max_organizer_fee_bp, sp_common::types::caps::ORGANIZER_FEE_BP);
+    assert_eq!(
+        caps.platform_fee_bp,
+        sp_common::types::caps::PLATFORM_FEE_BP
+    );
+    assert_eq!(
+        caps.max_organizer_fee_bp,
+        sp_common::types::caps::ORGANIZER_FEE_BP
+    );
     assert_eq!(caps.basis_points, 10_000);
     let mut p = c.get_params();
     p.platform_fee_bp = caps.platform_fee_bp + 1;
@@ -56,6 +62,24 @@ fn hard_caps_view_matches_validation_limits() {
     let mut p = c.get_params();
     p.max_member_share_bp = caps.basis_points + 1;
     assert!(c.try_set_params(&p).is_err());
+}
+
+#[test]
+fn organizer_fee_hard_cap_boundary() {
+    let (_e, c, _) = setup();
+    let p = c.get_params();
+    assert_eq!(p.max_organizer_fee_bp, 100);
+
+    // Raising max_organizer_fee_bp to the 200 bp hard cap works
+    let mut p_at_cap = c.get_params();
+    p_at_cap.max_organizer_fee_bp = sp_common::types::caps::ORGANIZER_FEE_BP;
+    c.set_params(&p_at_cap);
+    assert_eq!(c.get_params().max_organizer_fee_bp, 200);
+
+    // Raising it above the 200 bp hard cap fails in set_params
+    let mut p_over_cap = c.get_params();
+    p_over_cap.max_organizer_fee_bp = sp_common::types::caps::ORGANIZER_FEE_BP + 1;
+    assert!(c.try_set_params(&p_over_cap).is_err());
 }
 
 #[test]

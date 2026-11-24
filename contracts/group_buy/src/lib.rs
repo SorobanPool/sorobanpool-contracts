@@ -65,6 +65,8 @@ pub enum Error {
     NotFinal = 344,
     SupplierIsParty = 345,
     OrganizerIsSupplier = 347,
+    /// reject() received a reason symbol outside the fixed allow-list.
+    InvalidRejectReason = 348,
 }
 
 #[contracttype]
@@ -82,6 +84,15 @@ const PAGE: u32 = 50;
 const COLLECTIVE_CONFIRM_BP: u32 = 5000;
 /// Brief 5.9: a supplier is suspended after two failures within this window.
 const SUSPEND_WINDOW_SECS: u64 = 90 * 24 * 3600;
+
+/// Fixed allow-list of reason symbols accepted by `reject`.
+/// All fit in a `symbol_short!` (≤ 9 chars, `[a-zA-Z0-9_]`).
+fn is_valid_reject_reason(r: &Symbol) -> bool {
+    *r == symbol_short!("no_stock")
+        || *r == symbol_short!("price_chg")
+        || *r == symbol_short!("quality")
+        || *r == symbol_short!("other")
+}
 
 fn fail<T>(env: &Env, e: Error) -> T {
     panic_with_error!(env, e)
@@ -731,7 +742,7 @@ impl GroupBuy {
         }
     }
 
-    pub fn reject(env: Env, supplier: Address, pool_id: u64) {
+    pub fn reject(env: Env, supplier: Address, pool_id: u64, reason: Option<Symbol>) {
         supplier.require_auth();
         let mut pool = load_pool(&env, pool_id);
         if supplier != pool.terms.supplier {
@@ -740,9 +751,25 @@ impl GroupBuy {
         if pool.state != PoolState::Filled {
             fail::<()>(&env, Error::WrongState);
         }
+        // Validate reason when provided; default to `other` when absent.
+        let reason_sym: Symbol = match &reason {
+            Some(r) => {
+                if !is_valid_reject_reason(r) {
+                    fail::<()>(&env, Error::InvalidRejectReason);
+                }
+                r.clone()
+            }
+            None => symbol_short!("other"),
+        };
         end_refundable(&env, &mut pool, PoolState::Failed, true);
         save_pool(&env, &pool);
-        emit(&env, C, symbol_short!("rejected"), pool_id, supplier);
+        emit(
+            &env,
+            C,
+            symbol_short!("rejected"),
+            pool_id,
+            (supplier, reason_sym),
+        );
     }
 
     /// Permissionless after the accept window.

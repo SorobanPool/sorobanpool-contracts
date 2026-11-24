@@ -200,7 +200,7 @@ event_definitions = {
     ("group_buy", "expired"): ("bigint", "{ total_units: bigint }"),
     ("group_buy", "cancelled"): ("bigint", "{ caller: string }"),
     ("group_buy", "accepted"): ("bigint", "{ supplier: string }"),
-    ("group_buy", "rejected"): ("bigint", "{ supplier: string }"),
+    ("group_buy", "rejected"): ("bigint", "{ supplier: string; reason?: string }"),
     ("group_buy", "advance"): ("bigint", "{ amount: bigint }"),
     ("group_buy", "dispatch"): ("bigint", "{ waybill_hash?: string }"),
     ("group_buy", "failed"): ("bigint", "{ reason: 'no_accept' | 'no_deliv' | string }"),
