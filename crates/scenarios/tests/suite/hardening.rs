@@ -2,6 +2,7 @@
 use scenarios::*;
 use soroban_sdk::testutils::Address as _;
 use soroban_sdk::{Address, Symbol};
+use soroban_sdk::Address;
 use sp_common::types::{DisputeReason, Outcome, PoolState, Role, Status};
 
 const PRICE: i128 = USDC * 8 / 10;

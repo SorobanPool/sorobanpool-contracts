@@ -119,7 +119,7 @@ fn registries() {
 
 #[test]
 fn snapshot_matches_individual_views() {
-    let (e, c, admin) = setup();
+    let (_e, c, admin) = setup();
     // un-paused baseline: snapshot params equal get_params, all flags false
     let snap = c.snapshot();
     let p = c.get_params();
