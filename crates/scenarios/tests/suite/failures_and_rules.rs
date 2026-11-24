@@ -768,4 +768,171 @@ fn reject_reason_allow_list_and_event_payload() {
         format!("{:?}", c.env.events().all()).contains("other"),
         "pool_rejected includes the default other reason in its payload"
     );
+
+// Issue #41: Test fail_delivery against the exact delivery deadline
+#[test]
+fn confirm_delivery_succeeds_one_second_before_deadline() {
+    let c = setup();
+    let pool = c.pool(0);
+    c.fill_standard(pool);
+    c.gb.accept(&c.supplier, &pool, &0);
+    c.gb.dispatch(&c.supplier, &pool, &None);
+    
+    let p = c.gb.pool(&pool);
+    let lead_time = p.terms.lead_time_secs;
+    let delivery_grace = c.cfg.get_params().delivery_grace_secs;
+    let deadline = p.accepted_at + lead_time + delivery_grace;
+    
+    // Jump to 1 second before the deadline
+    c.set_time(deadline - 1);
+    
+    // confirm_delivery should succeed
+    c.gb.confirm_delivery(&c.organizer, &pool, &420, &h(&c.env, 7));
+    assert_eq!(c.gb.pool(&pool).state, PoolState::Delivered);
+}
+
+#[test]
+fn fail_delivery_fails_one_second_before_deadline() {
+    let c = setup();
+    let pool = c.pool(0);
+    c.fill_standard(pool);
+    c.gb.accept(&c.supplier, &pool, &0);
+    c.gb.dispatch(&c.supplier, &pool, &None);
+    
+    let p = c.gb.pool(&pool);
+    let lead_time = p.terms.lead_time_secs;
+    let delivery_grace = c.cfg.get_params().delivery_grace_secs;
+    let deadline = p.accepted_at + lead_time + delivery_grace;
+    
+    // Jump to 1 second before the deadline
+    c.set_time(deadline - 1);
+    
+    // fail_delivery should fail (DeliveryDeadlineNotPassed)
+    assert!(c.gb.try_fail_delivery(&pool).is_err());
+}
+
+#[test]
+fn fail_delivery_succeeds_at_exact_deadline_and_beyond() {
+    let c = setup();
+    let pool = c.pool(0);
+    c.fill_standard(pool);
+    c.gb.accept(&c.supplier, &pool, &0);
+    c.gb.dispatch(&c.supplier, &pool, &None);
+    
+    let p = c.gb.pool(&pool);
+    let lead_time = p.terms.lead_time_secs;
+    let delivery_grace = c.cfg.get_params().delivery_grace_secs;
+    let deadline = p.accepted_at + lead_time + delivery_grace;
+    
+    // Jump to exact deadline
+    c.set_time(deadline);
+    
+    // fail_delivery should succeed
+    c.gb.fail_delivery(&pool);
+    assert_eq!(c.gb.pool(&pool).state, PoolState::Failed);
+}
+
+#[test]
+fn escrow_accounting_consistent_after_exact_deadline_paths() {
+    let c = setup();
+    
+    // Path 1: confirm just before deadline
+    let pool1 = c.pool(0);
+    let t1 = c.fill_standard(pool1);
+    c.gb.accept(&c.supplier, &pool1, &0);
+    c.gb.dispatch(&c.supplier, &pool1, &None);
+    let p1 = c.gb.pool(&pool1);
+    let deadline1 = p1.accepted_at + p1.terms.lead_time_secs + c.cfg.get_params().delivery_grace_secs;
+    c.set_time(deadline1 - 1);
+    c.gb.confirm_delivery(&c.organizer, &pool1, &420, &h(&c.env, 8));
+    c.advance(48 * 3600 + 1);
+    c.gb.settle(&pool1);
+    let escrow1 = c.gb.pool(&pool1).escrow_balance;
+    
+    // Path 2: fail at deadline
+    let pool2 = c.pool(0);
+    c.fill_standard(pool2);
+    c.gb.accept(&c.supplier, &pool2, &0);
+    c.gb.dispatch(&c.supplier, &pool2, &None);
+    let p2 = c.gb.pool(&pool2);
+    let deadline2 = p2.accepted_at + p2.terms.lead_time_secs + c.cfg.get_params().delivery_grace_secs;
+    c.set_time(deadline2);
+    c.gb.fail_delivery(&pool2);
+    c.gb.push_refunds(&pool2, &10);
+    let escrow2 = c.gb.pool(&pool2).escrow_balance;
+    
+    // Both paths should leave zero escrow balance
+    assert_eq!(escrow1, 0, "confirmed delivery path should clear escrow");
+    assert_eq!(escrow2, 0, "failed delivery path should clear escrow");
+}
+
+// Issue #40: Test fail_accept racing a late supplier accept
+#[test]
+fn accept_succeeds_one_second_before_window_closes() {
+    let c = setup();
+    let pool = c.pool(0);
+    c.fill_standard(pool);
+    
+    let p = c.gb.pool(&pool);
+    let accept_window = c.cfg.get_params().accept_window_secs;
+    let window_end = p.filled_at + accept_window;
+    
+    // Jump to 1 second before window closes
+    c.set_time(window_end - 1);
+    
+    // accept should succeed
+    c.gb.accept(&c.supplier, &pool, &0);
+    assert_eq!(c.gb.pool(&pool).state, PoolState::Accepted);
+}
+
+#[test]
+fn fail_accept_is_rejected_one_second_before_window_closes() {
+    let c = setup();
+    let pool = c.pool(0);
+    c.fill_standard(pool);
+    
+    let p = c.gb.pool(&pool);
+    let accept_window = c.cfg.get_params().accept_window_secs;
+    let window_end = p.filled_at + accept_window;
+    
+    // Jump to 1 second before window closes
+    c.set_time(window_end - 1);
+    
+    // fail_accept should fail (AcceptWindowOpen)
+    assert!(c.gb.try_fail_accept(&pool).is_err());
+}
+
+#[test]
+fn accept_fails_at_exact_window_boundary() {
+    let c = setup();
+    let pool = c.pool(0);
+    c.fill_standard(pool);
+    
+    let p = c.gb.pool(&pool);
+    let accept_window = c.cfg.get_params().accept_window_secs;
+    let window_end = p.filled_at + accept_window;
+    
+    // Jump to exact window boundary
+    c.set_time(window_end);
+    
+    // accept should fail (AcceptWindowPassed)
+    assert!(c.gb.try_accept(&c.supplier, &pool, &0).is_err());
+}
+
+#[test]
+fn fail_accept_succeeds_at_exact_window_boundary() {
+    let c = setup();
+    let pool = c.pool(0);
+    c.fill_standard(pool);
+    
+    let p = c.gb.pool(&pool);
+    let accept_window = c.cfg.get_params().accept_window_secs;
+    let window_end = p.filled_at + accept_window;
+    
+    // Jump to exact window boundary
+    c.set_time(window_end);
+    
+    // fail_accept should succeed
+    c.gb.fail_accept(&pool);
+    assert_eq!(c.gb.pool(&pool).state, PoolState::Failed);
 }

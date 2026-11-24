@@ -567,6 +567,7 @@ impl GroupBuy {
             owed_total: 0,
             refunds_paid: 0,
             state: PoolState::Open,
+            emitted_tiers: Vec::new(&env),
         };
         save_pool(&env, &pool);
         emit(

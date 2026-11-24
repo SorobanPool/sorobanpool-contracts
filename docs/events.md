@@ -44,6 +44,10 @@ Short symbols are limited to 9 characters, so some brief names are abbreviated. 
 
 Not yet emitted: `tier_changed` (reputation tier changes are carried inside `rep_upd`).
 
+## Event Rules
+
+**tier_up idempotency:** The `tier_up` event is emitted at most once per (pool_id, tier_index) pair. If a pool crosses from tier 1 to tier 2 (via commitment), then drops below tier 2 (via withdrawal), and later crosses tier 2 again (via re-commitment), the second crossing does not emit another event. Indexers can rely on each tier milestone being reported exactly once per pool.
+
 ## Exported Artifact Schema
 
 `artifacts/events.json` is exported by `scripts/export_artifacts.py` with top-level metadata:

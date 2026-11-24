@@ -600,4 +600,128 @@ fn settlement_pays_unfrozen_remainder_before_supplier_wins_dispute() {
         "fees across settlement and dispute resolution equal the fee on the full supplier release"
     );
     assert_eq!(conserved(), total_before);
+
+// Issue #35: Add scenario test for the perishable 72h dispute window
+#[test]
+fn perishable_pool_accepts_dispute_at_71h_rejects_at_73h() {
+    let c = setup();
+    // Create a perishable pool
+    let terms = c.terms_perishable();
+    let pool = c.gb.create_pool(
+        &c.organizer,
+        &terms,
+        &h(&c.env, 1),
+        &c.cfg.get_params().platform_fee_bp,
+        &100,
+        &None,
+        &(c.now() + 2 * DAY),
+    );
+    
+    // Fill and deliver
+    let t = c.fill_standard(pool);
+    c.deliver(pool, 420);
+    
+    let delivered_at = c.gb.pool(&pool).delivered_at;
+    
+    // Jump to 71h after delivery (before 72h window closes)
+    c.set_time(delivered_at + 71 * 3600);
+    
+    // Should be able to open a dispute
+    let id = c.dis.open(&t[0], &pool, &DisputeReason::Damaged, &10, &h(&c.env, 9));
+    assert!(id > 0, "dispute should open successfully at 71h for perishable pool");
+    
+    // Resolve the dispute to clean up
+    c.dis.resolve(&c.arbiter, &id, &Outcome::RefundMember(10), &h(&c.env, 10));
+    
+    // Jump to 73h after delivery (past 72h window)
+    c.set_time(delivered_at + 73 * 3600);
+    
+    // Should NOT be able to open a dispute (DisputeWindowClosed)
+    assert!(c.dis.try_open(&t[1], &pool, &DisputeReason::Quality, &10, &h(&c.env, 11)).is_err(),
+            "dispute should fail at 73h for perishable pool");
+}
+
+#[test]
+fn non_perishable_pool_still_closes_disputes_at_48h() {
+    let c = setup();
+    // Create a non-perishable pool (default)
+    let pool = c.pool(0);
+    let t = c.fill_standard(pool);
+    c.deliver(pool, 420);
+    
+    let delivered_at = c.gb.pool(&pool).delivered_at;
+    
+    // Jump to 47h after delivery (before 48h window closes)
+    c.set_time(delivered_at + 47 * 3600);
+    
+    // Should be able to open a dispute
+    let id = c.dis.open(&t[0], &pool, &DisputeReason::Short, &10, &h(&c.env, 12));
+    assert!(id > 0, "dispute should open at 47h for non-perishable pool");
+    c.dis.resolve(&c.arbiter, &id, &Outcome::RefundMember(10), &h(&c.env, 13));
+    
+    // Jump to 49h after delivery (past 48h window)
+    c.set_time(delivered_at + 49 * 3600);
+    
+    // Should NOT be able to open a dispute
+    assert!(c.dis.try_open(&t[1], &pool, &DisputeReason::Damaged, &10, &h(&c.env, 14)).is_err(),
+            "dispute should fail at 49h for non-perishable pool");
+}
+
+#[test]
+fn settle_blocked_until_perishable_window_ends_unless_early_release() {
+    let c = setup();
+    // Create a perishable pool
+    let terms = c.terms_perishable();
+    let pool = c.gb.create_pool(
+        &c.organizer,
+        &terms,
+        &h(&c.env, 15),
+        &c.cfg.get_params().platform_fee_bp,
+        &100,
+        &None,
+        &(c.now() + 2 * DAY),
+    );
+    
+    let t = c.fill_standard(pool);
+    c.deliver(pool, 420);
+    
+    let delivered_at = c.gb.pool(&pool).delivered_at;
+    
+    // Try to settle at 50h (past non-perishable 48h, but before perishable 72h)
+    c.set_time(delivered_at + 50 * 3600);
+    assert!(c.gb.try_settle(&pool).is_err(), "settle should be blocked before 72h window for perishable");
+    
+    // Jump to 73h (past 72h window)
+    c.set_time(delivered_at + 73 * 3600);
+    c.gb.settle(&pool);
+    assert_eq!(c.gb.pool(&pool).state, PoolState::Settled, "settle should succeed after 72h window");
+}
+
+#[test]
+fn early_release_weight_bypasses_perishable_window() {
+    let c = setup();
+    // Create a perishable pool
+    let terms = c.terms_perishable();
+    let pool = c.gb.create_pool(
+        &c.organizer,
+        &terms,
+        &h(&c.env, 16),
+        &c.cfg.get_params().platform_fee_bp,
+        &100,
+        &None,
+        &(c.now() + 2 * DAY),
+    );
+    
+    let t = c.fill_standard(pool);
+    c.deliver(pool, 420);
+    
+    // All members confirm pickup (100% weight)
+    for m in &t {
+        c.gb.confirm_pickup(m, &pool);
+    }
+    
+    // Should be able to settle immediately with 100% pickup confirmation
+    c.gb.settle(&pool);
+    assert_eq!(c.gb.pool(&pool).state, PoolState::Settled, 
+               "early release (100% pickup) should bypass perishable window");
 }
