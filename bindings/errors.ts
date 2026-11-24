@@ -80,6 +80,7 @@ export const GroupBuyErrors = {
   DeadlineTooFar: 346,
   OrganizerIsSupplier: 347,
   InvalidRejectReason: 348,
+  ZeroPageSize: 349,
 } as const;
 
 export type GroupBuyErrorCode = (typeof GroupBuyErrors)[keyof typeof GroupBuyErrors];
@@ -99,6 +100,7 @@ export const DisputesErrors = {
   Overflow: 411,
   AlreadyDisputed: 412,
   TooManyOpenDisputes: 413,
+  EvidenceClosed: 414,
 } as const;
 
 export type DisputesErrorCode = (typeof DisputesErrors)[keyof typeof DisputesErrors];

@@ -1,9 +1,7 @@
 use scenarios::*;
 use soroban_sdk::testutils::{Address as _, Events as _};
-use soroban_sdk::Address;
-use soroban_sdk::testutils::Address as _;
-use soroban_sdk::{Address, Vec as SorobanVec};
-use sp_common::types::{DisputeReason, Outcome, PoolState, Role};
+use soroban_sdk::{vec, Address, Symbol, Vec as SorobanVec};
+use sp_common::types::{DisputeReason, Outcome, PoolState, Role, Tier};
 
 const PRICE: i128 = USDC * 8 / 10;
 const DEPOSIT: i128 = USDC / 2; // 1% of the claim is below the 0.5 USDC minimum
@@ -600,6 +598,7 @@ fn settlement_pays_unfrozen_remainder_before_supplier_wins_dispute() {
         "fees across settlement and dispute resolution equal the fee on the full supplier release"
     );
     assert_eq!(conserved(), total_before);
+}
 
 // Issue #35: Add scenario test for the perishable 72h dispute window
 #[test]
@@ -611,34 +610,43 @@ fn perishable_pool_accepts_dispute_at_71h_rejects_at_73h() {
         &c.organizer,
         &terms,
         &h(&c.env, 1),
-        &c.cfg.get_params().platform_fee_bp,
-        &100,
+        &0,
         &None,
         &(c.now() + 2 * DAY),
     );
-    
+
     // Fill and deliver
     let t = c.fill_standard(pool);
     c.deliver(pool, 420);
-    
+
     let delivered_at = c.gb.pool(&pool).delivered_at;
-    
+
     // Jump to 71h after delivery (before 72h window closes)
     c.set_time(delivered_at + 71 * 3600);
-    
+
     // Should be able to open a dispute
-    let id = c.dis.open(&t[0], &pool, &DisputeReason::Damaged, &10, &h(&c.env, 9));
-    assert!(id > 0, "dispute should open successfully at 71h for perishable pool");
-    
+    let id = c
+        .dis
+        .open(&t[0], &pool, &DisputeReason::Damaged, &10, &h(&c.env, 9));
+    assert!(
+        id > 0,
+        "dispute should open successfully at 71h for perishable pool"
+    );
+
     // Resolve the dispute to clean up
-    c.dis.resolve(&c.arbiter, &id, &Outcome::RefundMember(10), &h(&c.env, 10));
-    
+    c.dis
+        .resolve(&c.arbiter, &id, &Outcome::RefundMember(10), &h(&c.env, 10));
+
     // Jump to 73h after delivery (past 72h window)
     c.set_time(delivered_at + 73 * 3600);
-    
+
     // Should NOT be able to open a dispute (DisputeWindowClosed)
-    assert!(c.dis.try_open(&t[1], &pool, &DisputeReason::Quality, &10, &h(&c.env, 11)).is_err(),
-            "dispute should fail at 73h for perishable pool");
+    assert!(
+        c.dis
+            .try_open(&t[1], &pool, &DisputeReason::Quality, &10, &h(&c.env, 11))
+            .is_err(),
+        "dispute should fail at 73h for perishable pool"
+    );
 }
 
 #[test]
@@ -648,23 +656,30 @@ fn non_perishable_pool_still_closes_disputes_at_48h() {
     let pool = c.pool(0);
     let t = c.fill_standard(pool);
     c.deliver(pool, 420);
-    
+
     let delivered_at = c.gb.pool(&pool).delivered_at;
-    
+
     // Jump to 47h after delivery (before 48h window closes)
     c.set_time(delivered_at + 47 * 3600);
-    
+
     // Should be able to open a dispute
-    let id = c.dis.open(&t[0], &pool, &DisputeReason::Short, &10, &h(&c.env, 12));
+    let id = c
+        .dis
+        .open(&t[0], &pool, &DisputeReason::Short, &10, &h(&c.env, 12));
     assert!(id > 0, "dispute should open at 47h for non-perishable pool");
-    c.dis.resolve(&c.arbiter, &id, &Outcome::RefundMember(10), &h(&c.env, 13));
-    
+    c.dis
+        .resolve(&c.arbiter, &id, &Outcome::RefundMember(10), &h(&c.env, 13));
+
     // Jump to 49h after delivery (past 48h window)
     c.set_time(delivered_at + 49 * 3600);
-    
+
     // Should NOT be able to open a dispute
-    assert!(c.dis.try_open(&t[1], &pool, &DisputeReason::Damaged, &10, &h(&c.env, 14)).is_err(),
-            "dispute should fail at 49h for non-perishable pool");
+    assert!(
+        c.dis
+            .try_open(&t[1], &pool, &DisputeReason::Damaged, &10, &h(&c.env, 14))
+            .is_err(),
+        "dispute should fail at 49h for non-perishable pool"
+    );
 }
 
 #[test]
@@ -676,25 +691,31 @@ fn settle_blocked_until_perishable_window_ends_unless_early_release() {
         &c.organizer,
         &terms,
         &h(&c.env, 15),
-        &c.cfg.get_params().platform_fee_bp,
-        &100,
+        &0,
         &None,
         &(c.now() + 2 * DAY),
     );
-    
-    let t = c.fill_standard(pool);
+
+    c.fill_standard(pool);
     c.deliver(pool, 420);
-    
+
     let delivered_at = c.gb.pool(&pool).delivered_at;
-    
+
     // Try to settle at 50h (past non-perishable 48h, but before perishable 72h)
     c.set_time(delivered_at + 50 * 3600);
-    assert!(c.gb.try_settle(&pool).is_err(), "settle should be blocked before 72h window for perishable");
-    
+    assert!(
+        c.gb.try_settle(&pool).is_err(),
+        "settle should be blocked before 72h window for perishable"
+    );
+
     // Jump to 73h (past 72h window)
     c.set_time(delivered_at + 73 * 3600);
     c.gb.settle(&pool);
-    assert_eq!(c.gb.pool(&pool).state, PoolState::Settled, "settle should succeed after 72h window");
+    assert_eq!(
+        c.gb.pool(&pool).state,
+        PoolState::Settled,
+        "settle should succeed after 72h window"
+    );
 }
 
 #[test]
@@ -706,22 +727,171 @@ fn early_release_weight_bypasses_perishable_window() {
         &c.organizer,
         &terms,
         &h(&c.env, 16),
-        &c.cfg.get_params().platform_fee_bp,
-        &100,
+        &0,
         &None,
         &(c.now() + 2 * DAY),
     );
-    
+
     let t = c.fill_standard(pool);
     c.deliver(pool, 420);
-    
+
     // All members confirm pickup (100% weight)
     for m in &t {
         c.gb.confirm_pickup(m, &pool);
     }
-    
+
     // Should be able to settle immediately with 100% pickup confirmation
     c.gb.settle(&pool);
-    assert_eq!(c.gb.pool(&pool).state, PoolState::Settled, 
-               "early release (100% pickup) should bypass perishable window");
+    assert_eq!(
+        c.gb.pool(&pool).state,
+        PoolState::Settled,
+        "early release (100% pickup) should bypass perishable window"
+    );
+}
+
+fn delivered_at_price(price: i128) -> (Ctx, u64, [Address; 4]) {
+    let c = setup();
+    let mut terms = c.terms();
+    terms.tiers = vec![
+        &c.env,
+        Tier {
+            min_units: 100,
+            unit_price: price + 2,
+        },
+        Tier {
+            min_units: 200,
+            unit_price: price + 1,
+        },
+        Tier {
+            min_units: 400,
+            unit_price: price,
+        },
+    ];
+    let pool = c.gb.create_pool(
+        &c.organizer,
+        &terms,
+        &h(&c.env, 1),
+        &0,
+        &None::<Symbol>,
+        &(c.now() + 3 * DAY),
+    );
+    let t = c.fill_standard(pool);
+    c.deliver(pool, 420);
+    (c, pool, t)
+}
+
+#[test]
+fn dispute_window_accepts_last_permitted_second_and_rejects_deadline() {
+    let c = setup();
+    let pool = c.pool(0);
+    let t = c.fill_standard(pool);
+    c.deliver(pool, 420);
+    let deadline = c.gb.dispute_deadline(&pool);
+    assert_eq!(deadline, c.gb.pool(&pool).delivered_at + 48 * 3600);
+
+    c.set_time(deadline - 1);
+    let id = c
+        .dis
+        .open(&t[0], &pool, &DisputeReason::Damaged, &10, &h(&c.env, 3));
+    assert_eq!(c.dis.dispute(&id).opened_at, deadline - 1);
+
+    c.set_time(deadline);
+    let err = c
+        .dis
+        .try_open(&t[1], &pool, &DisputeReason::Damaged, &10, &h(&c.env, 4))
+        .err()
+        .and_then(|r| r.ok())
+        .map(|e| e.get_code());
+    assert_eq!(err, Some(group_buy::Error::DisputeWindowClosed as u32));
+    assert_eq!(c.dis.open_disputes_of(&pool).len(), 1);
+}
+
+#[test]
+fn deposit_follows_minimum_crossover_and_never_exceeds_the_claim() {
+    let cases: [(u32, i128, i128); 6] = [
+        (1, PRICE, USDC / 2),
+        (62, PRICE, USDC / 2),
+        (63, PRICE, 504 * USDC / 1000),
+        (100, PRICE, 8 * USDC / 10),
+        (200, PRICE, 16 * USDC / 10),
+        (1, 1, 1),
+    ];
+    for (units, price, expected_deposit) in cases {
+        let (c, pool, t) = if price == PRICE {
+            delivered()
+        } else {
+            delivered_at_price(price)
+        };
+        let claimed_amount = (units as i128) * price;
+        assert!(
+            expected_deposit <= claimed_amount,
+            "deposit {expected_deposit} must not exceed claim {claimed_amount}"
+        );
+        let before = c.bal(&t[3]);
+        let id = open(&c, pool, &t[3], units);
+        let d = c.dis.dispute(&id);
+        assert_eq!(d.claimed_amount, claimed_amount);
+        assert_eq!(d.deposit, expected_deposit);
+        assert_eq!(before - c.bal(&t[3]), expected_deposit);
+        assert_eq!(c.gb.pool(&pool).frozen_amount, claimed_amount);
+        if price != PRICE {
+            let supplier_before = c.bal(&c.supplier);
+            c.dis
+                .resolve(&c.arbiter, &id, &Outcome::ReleaseToSupplier, &h(&c.env, 4));
+            assert_eq!(c.bal(&c.supplier) - supplier_before, expected_deposit);
+        }
+    }
+}
+
+#[test]
+fn split_bp_boundaries_move_the_whole_claim() {
+    const UNITS: u32 = 20;
+    const CLAIM: i128 = 20 * PRICE;
+    let one_bp = CLAIM / 10_000;
+    let cases: [(u32, Option<(i128, i128)>); 5] = [
+        (0, Some((0, CLAIM))),
+        (1, Some((one_bp, CLAIM - one_bp))),
+        (9_999, Some((CLAIM - one_bp, one_bp))),
+        (10_000, Some((CLAIM, 0))),
+        (10_001, None),
+    ];
+    for (bp, expected) in cases {
+        let (c, pool, t) = delivered();
+        let id = open(&c, pool, &t[3], UNITS);
+        let member_before = c.bal(&t[3]);
+        let Some((to_member, to_supplier)) = expected else {
+            let err = c
+                .dis
+                .try_resolve(&c.arbiter, &id, &Outcome::Split(bp), &h(&c.env, 4))
+                .err()
+                .and_then(|r| r.ok())
+                .map(|e| e.get_code());
+            assert_eq!(err, Some(disputes::Error::BadOutcome as u32));
+            assert!(!c.dis.dispute(&id).resolved);
+            assert_eq!(c.bal(&t[3]), member_before);
+            c.dis
+                .resolve(&c.arbiter, &id, &Outcome::ReleaseToSupplier, &h(&c.env, 5));
+            assert!(c.dis.dispute(&id).resolved);
+            continue;
+        };
+        c.advance(48 * 3600);
+        c.gb.settle(&pool);
+        let supplier_at_settle = c.bal(&c.supplier);
+        let treasury_at_settle = c.bal(&c.treasury);
+        c.dis
+            .resolve(&c.arbiter, &id, &Outcome::Split(bp), &h(&c.env, 4));
+        let fees = to_supplier * 150 / 10_000;
+        assert_eq!(c.bal(&c.supplier) - supplier_at_settle, to_supplier - fees);
+        assert_eq!(c.bal(&c.treasury) - treasury_at_settle, fees);
+        assert_eq!(c.gb.claim_refund(&t[3], &pool), 20 * USDC + to_member);
+        assert_eq!(
+            c.bal(&t[3]) - member_before,
+            20 * USDC + to_member + DEPOSIT
+        );
+        for m in [&t[0], &t[1], &t[2]] {
+            c.gb.claim_refund(m, &pool);
+        }
+        drain(&c, pool);
+        assert_eq!(c.bal(&c.gb.address), 0);
+    }
 }

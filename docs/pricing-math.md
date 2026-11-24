@@ -15,10 +15,10 @@ All amounts are `i128` USDC stroops (7 decimals). Every operation is checked; ov
 
 **Settlement.** `gross = R × final_price`; `payable = gross − frozen − diverted`; organizer fee and platform fee are `floor(payable × bp / 10000)`; supplier gets `payable − fees − advance_paid`. Sum of member refunds `= total_paid − gross` exactly, so no dust arises from tiers or shortfall.
 
-**Dispute amounts.** `claimed_amount = claimed_units × final_price`. Deposit `= max(claimed × deposit_bp, deposit_min)`.
+**Dispute amounts.** `claimed_amount = claimed_units × final_price`. Deposit `= min(claimed, max(claimed × deposit_bp, deposit_min))`: the 1% floor of `deposit_min` applies below the crossover, the percentage applies above it, and the claim itself is a hard ceiling so a tiny claim never requires a larger deposit.
 - `ReleaseToSupplier`: all to supplier (fees applied when paid).
 - `RefundMember(u)`: `u × final_price` to the member (or pool-wide if the opener is not a member), rest to supplier.
-- `Split(bp)`: `floor(claim × bp/10000)` to the group side, rest to supplier.
+- `Split(bp)`: supplier receives `floor(claim × (10000−bp)/10000)`, the group side receives the remainder; `bp > 10000` is rejected. `bp = 0` moves the whole claim to the supplier (as `ReleaseToSupplier`), `bp = 10000` moves the whole claim to the group side.
 - `RefundPool`: whole claim shared pro-rata by units (floor; remainder stays as unswept dust).
 
 **Dust.** Only the floor remainder of `RefundPool` shares can remain; `sweep_dust` sends escrow beyond `owed_total − refunds_paid` to the treasury once nothing is frozen.

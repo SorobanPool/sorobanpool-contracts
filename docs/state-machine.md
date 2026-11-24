@@ -32,11 +32,11 @@ The table below lists every state-changing function in [`contracts/group_buy/src
 | `Open` | `Open` | [`withdraw_commitment`](../contracts/group_buy/src/lib.rs) | Member | Pool is `Open`, current time ≤ deadline - lock window (2h), remaining total must not drop below any lower tier boundary (ADR 0001). |
 | `Open` | `Filled` | [`close_early`](../contracts/group_buy/src/lib.rs) | Organizer | Pool is `Open`, organizer authorization, total committed units ≥ MOQ. |
 | `Open` | `Filled` / `Expired` | [`close`](../contracts/group_buy/src/lib.rs) | Anyone | Pool is `Open`, current time ≥ fill deadline. Reaches `Filled` if `total >= MOQ`, else `Expired`. |
-| `Filled` | `Accepted` | [`accept`](../contracts/group_buy/src/lib.rs) | Supplier | Pool is `Filled`, supplier authorization, current time ≤ accept deadline. Optional advance paid if supplier bond covers it. |
+| `Filled` | `Accepted` | [`accept`](../contracts/group_buy/src/lib.rs) | Supplier | Pool is `Filled`, supplier authorization, current time < accept deadline. Optional advance paid if supplier bond covers it. |
 | `Filled` | `Failed` | [`reject`](../contracts/group_buy/src/lib.rs) | Supplier | Pool is `Filled`, supplier authorization. Marks supplier failure in `reputation`. |
-| `Filled` | `Failed` | [`fail_accept`](../contracts/group_buy/src/lib.rs) | Anyone | Pool is `Filled`, current time > accept deadline (`filled_at + accept_window_secs`). At the exact boundary, `accept` fails and `fail_accept` succeeds (the first caller wins). Supplier failed SLA. |
+| `Filled` | `Failed` | [`fail_accept`](../contracts/group_buy/src/lib.rs) | Anyone | Pool is `Filled`, current time ≥ accept deadline (`filled_at + accept_window_secs`). At the exact boundary, `accept` fails and `fail_accept` succeeds (the first caller wins). Supplier failed SLA. |
 | `Accepted` | `Dispatched` | [`dispatch`](../contracts/group_buy/src/lib.rs) | Supplier | Pool is `Accepted`, supplier authorization. |
-| `Accepted`, `Dispatched` | `Failed` | [`fail_delivery`](../contracts/group_buy/src/lib.rs) | Anyone | Pool is `Accepted` or `Dispatched`, current time > delivery deadline (`accepted_at + lead_time_secs + delivery_grace_secs`). Slashes supplier bond if advance was disbursed. |
+| `Accepted`, `Dispatched` | `Failed` | [`fail_delivery`](../contracts/group_buy/src/lib.rs) | Anyone | Pool is `Accepted` or `Dispatched`, current time ≥ delivery deadline (`accepted_at + lead_time_secs + delivery_grace_secs`). Slashes supplier bond if advance was disbursed. |
 | `Accepted`, `Dispatched` | `Delivered` | [`confirm_delivery`](../contracts/group_buy/src/lib.rs) | Organizer | Pool is `Accepted` or `Dispatched`, organizer authorization, `received_units <= total_units`. Can race `fail_delivery` within the grace period. |
 | `Accepted`, `Dispatched` | `Delivered` | [`member_confirm_delivery`](../contracts/group_buy/src/lib.rs) | Member | Pool is `Accepted` or `Dispatched`, current time > organizer confirm window; confirms sum to ≥ 50% of units. |
 | `Delivered` | `Delivered` | [`allocate_shortfall`](../contracts/group_buy/src/lib.rs) | Anyone | Pool is `Delivered` with `received < total`; processes members in paged batches of up to 50 until all members allocated. |
@@ -59,6 +59,8 @@ The table below covers every state-changing function in [`contracts/disputes/src
 | `Open` | `Open` | [`add_evidence`](../contracts/disputes/src/lib.rs) | Dispute party | Dispute is `Open`, caller is opener or respondent, evidence hash (32 bytes) provided. |
 | `Open` | `Resolved` | [`resolve`](../contracts/disputes/src/lib.rs) | Arbiter | Dispute is `Open`, caller is active arbiter in `config`. Resolves outcome (`ReleaseToSupplier`, `RefundMember`, `Split`, `RefundPool`). Calls `group_buy.apply_outcome` and refunds or slashes deposit. |
 | `Open` | `TimedOut` | [`timeout`](../contracts/disputes/src/lib.rs) | Anyone | Dispute is `Open`, current time > `created_at + sla_timeout_secs`. Settles in favor of non-defaulting party. |
+
+**Dispute-window boundary.** The window opens when the pool reaches `Delivered` and closes at `confirm_deadline = delivered_at + confirm_window_secs` (`perishable_confirm_window_secs` for perishable goods; the same value returned by `group_buy.dispute_deadline`). `open` calls `group_buy.freeze`, which rejects timestamps `>= confirm_deadline` with `DisputeWindowClosed` (342). The boundary is therefore half-open `[delivered_at, confirm_deadline)`: a dispute opened at `confirm_deadline - 1` succeeds, while one opened at `confirm_deadline` fails.
 
 ## Read-only views (`group_buy` and `disputes`)
 
