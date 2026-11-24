@@ -6,6 +6,7 @@
 //! so these are regression guards, not a substitute for RPC simulation.
 use scenarios::*;
 use soroban_sdk::Address;
+use sp_common::types::DisputeReason;
 
 const CPU_LIMIT: u64 = 400_000_000;
 const MEM_LIMIT: u64 = 41_943_040;
@@ -50,4 +51,54 @@ fn worst_case_200_members_stays_within_budget() {
     });
     let pushed = measure(&c, "push_refunds(25)", 80, || c.gb.push_refunds(&pool, &25));
     assert_eq!(pushed, 25);
+}
+
+/// Worst case of the per-pool open-dispute cap: 50 concurrent disputes in a full 200-member pool.
+#[test]
+fn open_dispute_views_at_cap_stay_within_budget() {
+    let c = setup();
+    let mut b = c.env.cost_estimate().budget();
+    b.reset_unlimited();
+    let pool = c.pool(100);
+    let members: Vec<Address> = (0..MEMBERS).map(|_| c.trader()).collect();
+    for m in &members {
+        c.gb.commit(m, &pool, &2);
+    }
+    c.advance(3 * DAY);
+    c.gb.close(&pool);
+    c.deliver(pool, 400);
+    for m in &members {
+        c.gb.confirm_pickup(m, &pool);
+    }
+    for m in &members[..50] {
+        c.dis
+            .open(m, &pool, &DisputeReason::Damaged, &1, &h(&c.env, 3));
+    }
+    assert_eq!(c.dis.open_disputes_of(&pool).len(), 50);
+    let err = c
+        .dis
+        .try_open(
+            &members[50],
+            &pool,
+            &DisputeReason::Damaged,
+            &1,
+            &h(&c.env, 3),
+        )
+        .err()
+        .and_then(|r| r.ok())
+        .map(|e| e.get_code());
+    assert_eq!(err, Some(disputes::Error::TooManyOpenDisputes as u32));
+
+    let page = measure(&c, "open_disputes_of_page(0,50)@cap", 50, || {
+        c.dis.open_disputes_of_page(&pool, &0, &50)
+    });
+    assert_eq!(page.len(), 50);
+    let past_cap = measure(&c, "open_disputes_of_page(50,50)@cap", 50, || {
+        c.dis.open_disputes_of_page(&pool, &50, &50)
+    });
+    assert_eq!(past_cap.len(), 0);
+    let all = measure(&c, "open_disputes_of@cap", 50, || {
+        c.dis.open_disputes_of(&pool)
+    });
+    assert_eq!(all.len(), 50);
 }

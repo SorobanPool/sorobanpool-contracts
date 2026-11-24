@@ -78,6 +78,9 @@ Read-only inspection methods do not mutate contract state:
   - [`escrow_invariant`](../contracts/group_buy/src/lib.rs): returns `(expected, actual)` escrow balances for integrity monitoring.
 - **`disputes` views**:
   - [`dispute`](../contracts/disputes/src/lib.rs): returns `Dispute` record by dispute id.
-  - [`open_disputes_of`](../contracts/disputes/src/lib.rs): returns list of open dispute ids for a pool.
+  - [`open_disputes_of`](../contracts/disputes/src/lib.rs): returns list of open dispute ids for a pool (unchanged; at most 50 because of the per-pool cap).
+  - [`open_disputes_of_page`](../contracts/disputes/src/lib.rs): returns a page of open dispute ids for a pool (`start`, `limit`); out-of-range pages are empty.
+
+A pool may have at most 50 concurrent open disputes; opening beyond that reverts with `TooManyOpenDisputes` (413). Resolving or timing out a dispute removes it from the pool list and frees a slot. One party may open only one dispute per pool and a pool has at most 200 members, so the absolute ceiling is 202; the lower explicit cap keeps both the full view and every page bounded.
 
 Known overlap: with default parameters the organizer-confirmation deadline and the delivery deadline coincide (`lead_time + 48h`). From that moment a supplier may force arbitration (`disputes.open` → treated as delivered in full) and anyone may call `fail_delivery`; whichever lands first wins. Operators should set `organizer_confirm_window_secs < delivery_grace_secs` if they want the supplier route to open first.

@@ -98,6 +98,7 @@ export const DisputesErrors = {
   TooMuchEvidence: 410,
   Overflow: 411,
   AlreadyDisputed: 412,
+  TooManyOpenDisputes: 413,
 } as const;
 
 export type DisputesErrorCode = (typeof DisputesErrors)[keyof typeof DisputesErrors];

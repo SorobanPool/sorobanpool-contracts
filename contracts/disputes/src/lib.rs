@@ -27,6 +27,7 @@ pub enum Error {
     TooMuchEvidence = 410,
     Overflow = 411,
     AlreadyDisputed = 412,
+    TooManyOpenDisputes = 413,
 }
 
 #[contracttype]
@@ -49,6 +50,10 @@ enum Side {
 
 const C: Symbol = symbol_short!("disputes");
 const MAX_EVIDENCE: u32 = 20;
+/// Cap on disputes open at once for one pool. A party may open only one dispute per pool and a pool has at
+/// most 200 members, so the absolute ceiling is 202; this lower, explicit cap also bounds the size of
+/// `open_disputes_of` and matches the 50-item batch size used for member pages and refund pushes.
+const MAX_OPEN_DISPUTES_PER_POOL: u32 = 50;
 
 fn fail<T>(env: &Env, e: Error) -> T {
     panic_with_error!(env, e)
@@ -220,6 +225,15 @@ impl Disputes {
         if env.storage().persistent().has(&ok) {
             fail::<()>(&env, Error::AlreadyDisputed);
         }
+        let lk = Key::PoolList(pool_id);
+        let mut list: Vec<u64> = env
+            .storage()
+            .persistent()
+            .get(&lk)
+            .unwrap_or_else(|| Vec::new(&env));
+        if list.len() >= MAX_OPEN_DISPUTES_PER_POOL {
+            fail::<()>(&env, Error::TooManyOpenDisputes);
+        }
         env.storage().persistent().set(&ok, &true);
         bump_persistent(&env, &ok);
         let claimed_amount = ck(&env, (claimed_units as i128).checked_mul(pool.final_price));
@@ -249,12 +263,6 @@ impl Disputes {
             outcome: Vec::new(&env),
         };
         save(&env, &d);
-        let lk = Key::PoolList(pool_id);
-        let mut list: Vec<u64> = env
-            .storage()
-            .persistent()
-            .get(&lk)
-            .unwrap_or_else(|| Vec::new(&env));
         list.push_back(id);
         env.storage().persistent().set(&lk, &list);
         bump_persistent(&env, &lk);
@@ -384,5 +392,23 @@ impl Disputes {
             .persistent()
             .get(&Key::PoolList(pool_id))
             .unwrap_or_else(|| Vec::new(&env))
+    }
+
+    /// Paged form of `open_disputes_of`. Returns at most `limit` ids from `start` onwards; out-of-range
+    /// pages are empty. The full view is kept for existing callers and is bounded by the per-pool cap.
+    pub fn open_disputes_of_page(env: Env, pool_id: u64, start: u32, limit: u32) -> Vec<u64> {
+        let list: Vec<u64> = env
+            .storage()
+            .persistent()
+            .get(&Key::PoolList(pool_id))
+            .unwrap_or_else(|| Vec::new(&env));
+        let mut out = Vec::new(&env);
+        let end = start.saturating_add(limit).min(list.len());
+        for i in start..end {
+            if let Some(id) = list.get(i) {
+                out.push_back(id);
+            }
+        }
+        out
     }
 }

@@ -408,6 +408,11 @@
       "name": "AlreadyDisputed"
     },
     {
+      "code": 413,
+      "contract": "disputes",
+      "name": "TooManyOpenDisputes"
+    },
+    {
       "code": 500,
       "contract": "supplier_bond",
       "name": "InvalidAmount"
