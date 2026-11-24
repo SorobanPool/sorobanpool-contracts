@@ -1,6 +1,6 @@
 use scenarios::*;
 use soroban_sdk::testutils::{Address as _, Events as _};
-use soroban_sdk::{symbol_short, Address, Symbol};
+use soroban_sdk::{symbol_short, xdr, Address, Symbol, TryFromVal};
 use sp_common::types::{caps, PoolState, Role, Tier};
 
 #[test]
@@ -57,16 +57,12 @@ fn shortfall_allocation_handles_zero_pages_and_retries_for_30_members() {
     c.gb.close(&pool);
     c.deliver(pool, 250);
 
-    let zero_page_error = c
-        .gb
-        .try_allocate_shortfall(&pool, &0)
-        .err()
-        .and_then(|r| r.ok())
-        .map(|e| e.get_code());
-    assert_eq!(
-        zero_page_error,
-        Some(group_buy::Error::ZeroPageSize as u32)
-    );
+    let zero_page_error =
+        c.gb.try_allocate_shortfall(&pool, &0)
+            .err()
+            .and_then(|r| r.ok())
+            .map(|e| e.get_code());
+    assert_eq!(zero_page_error, Some(group_buy::Error::ZeroPageSize as u32));
 
     assert!(!c.gb.allocate_shortfall(&pool, &10));
     assert!(!c.gb.allocate_shortfall(&pool, &10));
@@ -867,6 +863,19 @@ fn organizer_fee_at_hard_cap_boundaries() {
     assert!(c.cfg.try_set_params(&p_too_high).is_err());
 }
 
+fn rejected_event_reasons(c: &Ctx) -> Vec<String> {
+    let mut out = Vec::new();
+    for event in c.env.events().all().events() {
+        let xdr::ContractEventBody::V0(ref v0) = event.body;
+        if v0.topics.len() >= 2
+            && Symbol::try_from_val(&c.env, &v0.topics[1]).ok() == Some(symbol_short!("rejected"))
+        {
+            out.push(format!("{:?}", v0.data));
+        }
+    }
+    out
+}
+
 #[test]
 fn reject_reason_allow_list_and_event_payload() {
     let c = setup();
@@ -890,9 +899,10 @@ fn reject_reason_allow_list_and_event_payload() {
     c.fill_standard(pool_good);
     let good_reason = symbol_short!("no_stock");
     c.gb.reject(&c.supplier, &pool_good, &Some(good_reason));
+    let good_reasons = rejected_event_reasons(&c);
     assert_eq!(c.gb.pool(&pool_good).state, PoolState::Failed);
     assert!(
-        format!("{:?}", c.env.events().all()).contains("no_stock"),
+        good_reasons.iter().any(|r| r.contains("no_stock")),
         "pool_rejected includes the reason in its payload"
     );
 
@@ -900,11 +910,13 @@ fn reject_reason_allow_list_and_event_payload() {
     let pool_none = c.pool(0);
     c.fill_standard(pool_none);
     c.gb.reject(&c.supplier, &pool_none, &None);
+    let none_reasons = rejected_event_reasons(&c);
     assert_eq!(c.gb.pool(&pool_none).state, PoolState::Failed);
     assert!(
-        format!("{:?}", c.env.events().all()).contains("other"),
+        none_reasons.iter().any(|r| r.contains("other")),
         "pool_rejected includes the default other reason in its payload"
     );
+}
 
 // Issue #41: Test fail_delivery against the exact delivery deadline
 #[test]
@@ -914,15 +926,15 @@ fn confirm_delivery_succeeds_one_second_before_deadline() {
     c.fill_standard(pool);
     c.gb.accept(&c.supplier, &pool, &0);
     c.gb.dispatch(&c.supplier, &pool, &None);
-    
+
     let p = c.gb.pool(&pool);
     let lead_time = p.terms.lead_time_secs;
     let delivery_grace = c.cfg.get_params().delivery_grace_secs;
     let deadline = p.accepted_at + lead_time + delivery_grace;
-    
+
     // Jump to 1 second before the deadline
     c.set_time(deadline - 1);
-    
+
     // confirm_delivery should succeed
     c.gb.confirm_delivery(&c.organizer, &pool, &420, &h(&c.env, 7));
     assert_eq!(c.gb.pool(&pool).state, PoolState::Delivered);
@@ -935,15 +947,15 @@ fn fail_delivery_fails_one_second_before_deadline() {
     c.fill_standard(pool);
     c.gb.accept(&c.supplier, &pool, &0);
     c.gb.dispatch(&c.supplier, &pool, &None);
-    
+
     let p = c.gb.pool(&pool);
     let lead_time = p.terms.lead_time_secs;
     let delivery_grace = c.cfg.get_params().delivery_grace_secs;
     let deadline = p.accepted_at + lead_time + delivery_grace;
-    
+
     // Jump to 1 second before the deadline
     c.set_time(deadline - 1);
-    
+
     // fail_delivery should fail (DeliveryDeadlineNotPassed)
     assert!(c.gb.try_fail_delivery(&pool).is_err());
 }
@@ -955,15 +967,15 @@ fn fail_delivery_succeeds_at_exact_deadline_and_beyond() {
     c.fill_standard(pool);
     c.gb.accept(&c.supplier, &pool, &0);
     c.gb.dispatch(&c.supplier, &pool, &None);
-    
+
     let p = c.gb.pool(&pool);
     let lead_time = p.terms.lead_time_secs;
     let delivery_grace = c.cfg.get_params().delivery_grace_secs;
     let deadline = p.accepted_at + lead_time + delivery_grace;
-    
+
     // Jump to exact deadline
     c.set_time(deadline);
-    
+
     // fail_delivery should succeed
     c.gb.fail_delivery(&pool);
     assert_eq!(c.gb.pool(&pool).state, PoolState::Failed);
@@ -972,32 +984,37 @@ fn fail_delivery_succeeds_at_exact_deadline_and_beyond() {
 #[test]
 fn escrow_accounting_consistent_after_exact_deadline_paths() {
     let c = setup();
-    
+
     // Path 1: confirm just before deadline
     let pool1 = c.pool(0);
     let t1 = c.fill_standard(pool1);
     c.gb.accept(&c.supplier, &pool1, &0);
     c.gb.dispatch(&c.supplier, &pool1, &None);
     let p1 = c.gb.pool(&pool1);
-    let deadline1 = p1.accepted_at + p1.terms.lead_time_secs + c.cfg.get_params().delivery_grace_secs;
+    let deadline1 =
+        p1.accepted_at + p1.terms.lead_time_secs + c.cfg.get_params().delivery_grace_secs;
     c.set_time(deadline1 - 1);
     c.gb.confirm_delivery(&c.organizer, &pool1, &420, &h(&c.env, 8));
     c.advance(48 * 3600 + 1);
     c.gb.settle(&pool1);
+    for m in &t1 {
+        c.gb.claim_refund(m, &pool1);
+    }
     let escrow1 = c.gb.pool(&pool1).escrow_balance;
-    
+
     // Path 2: fail at deadline
     let pool2 = c.pool(0);
     c.fill_standard(pool2);
     c.gb.accept(&c.supplier, &pool2, &0);
     c.gb.dispatch(&c.supplier, &pool2, &None);
     let p2 = c.gb.pool(&pool2);
-    let deadline2 = p2.accepted_at + p2.terms.lead_time_secs + c.cfg.get_params().delivery_grace_secs;
+    let deadline2 =
+        p2.accepted_at + p2.terms.lead_time_secs + c.cfg.get_params().delivery_grace_secs;
     c.set_time(deadline2);
     c.gb.fail_delivery(&pool2);
     c.gb.push_refunds(&pool2, &10);
     let escrow2 = c.gb.pool(&pool2).escrow_balance;
-    
+
     // Both paths should leave zero escrow balance
     assert_eq!(escrow1, 0, "confirmed delivery path should clear escrow");
     assert_eq!(escrow2, 0, "failed delivery path should clear escrow");
@@ -1009,14 +1026,14 @@ fn accept_succeeds_one_second_before_window_closes() {
     let c = setup();
     let pool = c.pool(0);
     c.fill_standard(pool);
-    
+
     let p = c.gb.pool(&pool);
     let accept_window = c.cfg.get_params().accept_window_secs;
     let window_end = p.filled_at + accept_window;
-    
+
     // Jump to 1 second before window closes
     c.set_time(window_end - 1);
-    
+
     // accept should succeed
     c.gb.accept(&c.supplier, &pool, &0);
     assert_eq!(c.gb.pool(&pool).state, PoolState::Accepted);
@@ -1027,14 +1044,14 @@ fn fail_accept_is_rejected_one_second_before_window_closes() {
     let c = setup();
     let pool = c.pool(0);
     c.fill_standard(pool);
-    
+
     let p = c.gb.pool(&pool);
     let accept_window = c.cfg.get_params().accept_window_secs;
     let window_end = p.filled_at + accept_window;
-    
+
     // Jump to 1 second before window closes
     c.set_time(window_end - 1);
-    
+
     // fail_accept should fail (AcceptWindowOpen)
     assert!(c.gb.try_fail_accept(&pool).is_err());
 }
@@ -1044,14 +1061,14 @@ fn accept_fails_at_exact_window_boundary() {
     let c = setup();
     let pool = c.pool(0);
     c.fill_standard(pool);
-    
+
     let p = c.gb.pool(&pool);
     let accept_window = c.cfg.get_params().accept_window_secs;
     let window_end = p.filled_at + accept_window;
-    
+
     // Jump to exact window boundary
     c.set_time(window_end);
-    
+
     // accept should fail (AcceptWindowPassed)
     assert!(c.gb.try_accept(&c.supplier, &pool, &0).is_err());
 }
@@ -1061,14 +1078,14 @@ fn fail_accept_succeeds_at_exact_window_boundary() {
     let c = setup();
     let pool = c.pool(0);
     c.fill_standard(pool);
-    
+
     let p = c.gb.pool(&pool);
     let accept_window = c.cfg.get_params().accept_window_secs;
     let window_end = p.filled_at + accept_window;
-    
+
     // Jump to exact window boundary
     c.set_time(window_end);
-    
+
     // fail_accept should succeed
     c.gb.fail_accept(&pool);
     assert_eq!(c.gb.pool(&pool).state, PoolState::Failed);

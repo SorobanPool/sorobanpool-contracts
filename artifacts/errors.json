@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "contractsVersion": "1c1038f",
+  "contractsVersion": "1a65605",
   "errors": [
     {
       "code": 100,
@@ -338,6 +338,16 @@
       "name": "OrganizerIsSupplier"
     },
     {
+      "code": 348,
+      "contract": "group_buy",
+      "name": "InvalidRejectReason"
+    },
+    {
+      "code": 349,
+      "contract": "group_buy",
+      "name": "ZeroPageSize"
+    },
+    {
       "code": 400,
       "contract": "disputes",
       "name": "NotInitialised"
@@ -401,6 +411,16 @@
       "code": 412,
       "contract": "disputes",
       "name": "AlreadyDisputed"
+    },
+    {
+      "code": 413,
+      "contract": "disputes",
+      "name": "TooManyOpenDisputes"
+    },
+    {
+      "code": 414,
+      "contract": "disputes",
+      "name": "EvidenceClosed"
     },
     {
       "code": 500,

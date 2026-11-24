@@ -67,6 +67,7 @@ pub enum Error {
     OrganizerIsSupplier = 347,
     /// reject() received a reason symbol outside the fixed allow-list.
     InvalidRejectReason = 348,
+    ZeroPageSize = 349,
 }
 
 #[contracttype]
@@ -425,13 +426,11 @@ fn add_units(env: &Env, member: &Address, pool_id: u64, units: u32, is_increase:
     save_commit(env, pool_id, &c);
     let after_tier = tier_index(&pool.terms.tiers, new_total);
     if after_tier != before_tier {
-        emit(
-            env,
-            C,
-            events::TIER_UP,
-            pool_id,
-            (after_tier.unwrap_or(0), new_total),
-        );
+        let tier = after_tier.unwrap_or(0);
+        if !pool.emitted_tiers.contains(tier) {
+            pool.emitted_tiers.push_back(tier);
+            emit(env, C, events::TIER_UP, pool_id, (tier, new_total));
+        }
     }
     let ev = if is_increase {
         events::COMMIT_UP
@@ -706,7 +705,7 @@ impl GroupBuy {
         if pool.state != PoolState::Filled {
             fail::<()>(&env, Error::WrongState);
         }
-        if now(&env) > pool.filled_at + params.accept_window_secs {
+        if now(&env) >= pool.filled_at + params.accept_window_secs {
             fail::<()>(&env, Error::AcceptWindowPassed);
         }
         pool.state = PoolState::Accepted;
@@ -774,7 +773,7 @@ impl GroupBuy {
         if pool.state != PoolState::Filled {
             fail::<()>(&env, Error::WrongState);
         }
-        if now(&env) <= pool.filled_at + params.accept_window_secs {
+        if now(&env) < pool.filled_at + params.accept_window_secs {
             fail::<()>(&env, Error::AcceptWindowOpen);
         }
         end_refundable(&env, &mut pool, PoolState::Failed, true);
@@ -804,7 +803,7 @@ impl GroupBuy {
         if !matches!(pool.state, PoolState::Accepted | PoolState::Dispatched) {
             fail::<()>(&env, Error::WrongState);
         }
-        if now(&env) <= delivery_deadline(&params, &pool) {
+        if now(&env) < delivery_deadline(&params, &pool) {
             fail::<()>(&env, Error::DeliveryDeadlineNotPassed);
         }
         end_refundable(&env, &mut pool, PoolState::Failed, true);
@@ -928,6 +927,7 @@ impl GroupBuy {
             fail::<()>(&env, Error::ZeroPageSize);
         }
         let mut pool = load_pool(&env, pool_id);
+        let was_done = pool.alloc_done;
         if pool.state != PoolState::Delivered {
             fail::<()>(&env, Error::WrongState);
         }

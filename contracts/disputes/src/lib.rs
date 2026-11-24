@@ -28,6 +28,7 @@ pub enum Error {
     Overflow = 411,
     AlreadyDisputed = 412,
     TooManyOpenDisputes = 413,
+    EvidenceClosed = 414,
 }
 
 #[contracttype]
@@ -239,7 +240,7 @@ impl Disputes {
         let claimed_amount = ck(&env, (claimed_units as i128).checked_mul(pool.final_price));
         let params = cfg(&env).get_params();
         let pct = ck(&env, bp_of(claimed_amount, params.dispute_deposit_bp));
-        let deposit = pct.max(params.dispute_deposit_min);
+        let deposit = pct.max(params.dispute_deposit_min).min(claimed_amount);
 
         let id: u64 = env.storage().instance().get(&Key::NextId).unwrap_or(1);
         env.storage().instance().set(&Key::NextId, &(id + 1));
@@ -328,10 +329,16 @@ impl Disputes {
         let (to_member, to_supplier, opener_won) = match outcome {
             Outcome::ReleaseToSupplier => (0, a, side == Side::Supplier),
             Outcome::RefundMember(units) => {
-                if units > d.claimed_units {
+                let g = gb(&env);
+                let pool = g.pool(&d.pool_id);
+                let allocation = match side {
+                    Side::Member => g.allocated_units_of(&d.pool_id, &d.opener),
+                    Side::Organizer => pool.received_units,
+                    Side::Supplier => pool.total_units,
+                };
+                if units > allocation || units > d.claimed_units {
                     fail::<()>(&env, Error::BadOutcome);
                 }
-                let pool = gb(&env).pool(&d.pool_id);
                 let m = ck(&env, (units as i128).checked_mul(pool.final_price));
                 (m, a - m, side != Side::Supplier && units > 0)
             }

@@ -37,7 +37,7 @@ modes.
 | 304 | group_buy | NotVerified |
 | 305 | group_buy | DeadlineInPast |
 | 346 | group_buy | DeadlineTooFar |
-| 347 | group_buy | ZeroPageSize |
+| 349 | group_buy | ZeroPageSize |
 | 306 | group_buy | FeeTooHigh |
 | 307 | group_buy | PoolTooLarge |
 | 308 | group_buy | PoolNotFound |
@@ -112,7 +112,11 @@ modes.
 
 Disputes accept at most 20 evidence hashes, including the opener's initial hash.
 The 21st hash fails with `TooMuchEvidence` (410); evidence additions after
-resolution or timeout fail with `EvidenceClosed` (413).
+resolution or timeout fail with `EvidenceClosed` (414). `BadOutcome` (409) is
+returned when the arbiter chooses `RefundMember(units)` above the member's
+allocation or the claimed units, or `Split(bp)` above 10,000 bp; the dispute
+stays open. A dispute deposit is capped at the claimed amount so a tiny claim
+never requires a larger deposit.
 
 ## Exported Artifact Schema
 

@@ -2,7 +2,6 @@
 use scenarios::*;
 use soroban_sdk::testutils::Address as _;
 use soroban_sdk::{Address, Symbol};
-use soroban_sdk::Address;
 use sp_common::types::{DisputeReason, Outcome, PoolState, Role, Status};
 
 const PRICE: i128 = USDC * 8 / 10;
@@ -196,4 +195,30 @@ fn revoked_attestor_cannot_attest_but_existing_records_remain() {
         Status::Registered,
         "new user must not be Verified after a failed attest from a revoked attestor"
     );
+}
+
+#[test]
+fn arbiter_refund_above_member_allocation_is_rejected_and_dispute_stays_open() {
+    let (c, pool, t) = delivered();
+    let id = c
+        .dis
+        .open(&t[0], &pool, &DisputeReason::Damaged, &10, &h(&c.env, 3));
+    let allocation = c.gb.allocated_units_of(&pool, &t[0]);
+    let err = c
+        .dis
+        .try_resolve(
+            &c.arbiter,
+            &id,
+            &Outcome::RefundMember(allocation + 1),
+            &h(&c.env, 4),
+        )
+        .err()
+        .and_then(|r| r.ok())
+        .map(|e| e.get_code());
+    assert_eq!(err, Some(disputes::Error::BadOutcome as u32));
+    assert!(!c.dis.dispute(&id).resolved);
+    assert_eq!(c.gb.pool(&pool).frozen_amount, 10 * PRICE);
+    c.dis
+        .resolve(&c.arbiter, &id, &Outcome::RefundMember(10), &h(&c.env, 5));
+    assert!(c.dis.dispute(&id).resolved);
 }
