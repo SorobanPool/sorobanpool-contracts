@@ -116,6 +116,55 @@ fn withdrawal_lock_and_tier_protection() {
 }
 
 #[test]
+fn commit_withdraw_re_commit_with_2h_lock() {
+    let c = setup();
+    let pool = c.pool(0);
+    let params = c.cfg.get_params();
+    let member = c.trader();
+
+    // Start with a pool that has enough commitments to establish a tier
+    // Add other members first to establish the pool
+    let other1 = c.trader();
+    let other2 = c.trader();
+    c.gb.commit(&other1, &pool, &150); // 150 units
+    c.gb.commit(&other2, &pool, &100); // 250 total - tier 2
+
+    // Now our test member joins
+    c.gb.commit(&member, &pool, &100); // 350 total - still tier 2
+    let initial_paid = 100 * 9_000_000; // tier 2 price (0.90 USDC = 9M stroops)
+    assert_eq!(c.gb.commitment(&pool, &member).unwrap().paid, initial_paid);
+
+    let p = c.gb.pool(&pool);
+    let lock_starts_at = p.fill_deadline - params.withdraw_lock_secs;
+
+    // Withdraw just before the lock (deadline - lock - 1 second) - should succeed
+    c.set_time(lock_starts_at - 1);
+
+    // Check that withdrawal won't lower tier (350 -> 250 stays in tier 2)
+    assert_eq!(c.gb.pool(&pool).total_units, 350);
+
+    let balance_before = c.bal(&member);
+    c.gb.withdraw_commitment(&member, &pool);
+    assert_eq!(c.bal(&member) - balance_before, initial_paid);
+    assert_eq!(c.gb.commitment(&pool, &member).unwrap().units, 0);
+    assert_eq!(c.gb.pool(&pool).total_units, 250);
+
+    // Re-commit after withdrawal - should charge current tier ceiling price
+    // Pool is at 250 units (tier 2), so new commits pay tier 2 ceiling price
+    let (tier_idx, tier_price) = c.gb.current_tier(&pool);
+    assert_eq!(tier_idx, 1); // tier 2 (index 1)
+    assert_eq!(tier_price, 9_000_000); // 0.9 USDC = 9M stroops
+
+    c.gb.commit(&member, &pool, &50);
+    let new_paid = c.gb.commitment(&pool, &member).unwrap().paid;
+    assert_eq!(new_paid, 50 * tier_price); // Charged at tier 2 ceiling price
+
+    // Now try to withdraw at deadline - lock + 1 (inside the lock window) - should fail
+    c.set_time(lock_starts_at + 1);
+    assert!(c.gb.try_withdraw_commitment(&member, &pool).is_err());
+}
+
+#[test]
 fn escrow_always_covers_final_bill_after_allowed_withdrawals() {
     let c = setup();
     let pool = c.pool(0);
@@ -425,6 +474,94 @@ fn cancel_rules() {
     let empty = c.pool(0);
     c.gb.cancel_pool(&c.organizer, &empty);
     assert_eq!(c.gb.pool(&empty).state, PoolState::Cancelled);
+}
+
+#[test]
+fn admin_cancel_pool_in_open_filled_accepted_with_full_refunds() {
+    let c = setup();
+
+    // Test 1: Admin cancel in Open state with commitments
+    let pool_open = c.pool(0);
+    let members_open: Vec<Address> = (0..3).map(|_| c.trader()).collect();
+    c.gb.commit(&members_open[0], &pool_open, &50);
+    c.gb.commit(&members_open[1], &pool_open, &75);
+    c.gb.commit(&members_open[2], &pool_open, &25);
+
+    let total_paid_open = 50 * USDC + 75 * USDC + 25 * USDC;
+    let pool_open_state = c.gb.pool(&pool_open);
+    assert_eq!(pool_open_state.state, PoolState::Open);
+    assert_eq!(pool_open_state.total_paid, total_paid_open);
+
+    // Admin cancels the Open pool
+    c.gb.cancel_pool(&c.admin, &pool_open);
+    let cancelled_pool = c.gb.pool(&pool_open);
+    assert_eq!(cancelled_pool.state, PoolState::Cancelled);
+    assert_eq!(cancelled_pool.owed_total, total_paid_open);
+
+    // All members get full refund, no fees taken
+    assert_eq!(c.gb.refundable_of(&pool_open, &members_open[0]), 50 * USDC);
+    assert_eq!(c.gb.refundable_of(&pool_open, &members_open[1]), 75 * USDC);
+    assert_eq!(c.gb.refundable_of(&pool_open, &members_open[2]), 25 * USDC);
+
+    for member in &members_open {
+        let refund = c.gb.claim_refund(member, &pool_open);
+        let commitment = c.gb.commitment(&pool_open, member).unwrap();
+        assert_eq!(refund, commitment.paid); // Full refund equals what they paid
+    }
+
+    // Test 2: Admin cancel in Filled state
+    let pool_filled = c.pool(0);
+    let members_filled = c.fill_standard(pool_filled); // Fills to 420 units (tier 3)
+    let pool_filled_state = c.gb.pool(&pool_filled);
+    assert_eq!(pool_filled_state.state, PoolState::Filled);
+    let total_paid_filled = pool_filled_state.total_paid;
+
+    // Admin cancels the Filled pool
+    c.gb.cancel_pool(&c.admin, &pool_filled);
+    let cancelled_filled = c.gb.pool(&pool_filled);
+    assert_eq!(cancelled_filled.state, PoolState::Cancelled);
+    assert_eq!(cancelled_filled.owed_total, total_paid_filled);
+
+    // All members get full refund
+    for member in &members_filled {
+        let commitment = c.gb.commitment(&pool_filled, member).unwrap();
+        let refundable = c.gb.refundable_of(&pool_filled, member);
+        assert_eq!(refundable, commitment.paid); // Full refund
+        let actual_refund = c.gb.claim_refund(member, &pool_filled);
+        assert_eq!(actual_refund, commitment.paid);
+    }
+
+    // Test 3: Admin cancel in Accepted state
+    let pool_accepted = c.pool(0);
+    let members_accepted = c.fill_standard(pool_accepted);
+    c.gb.accept(&c.supplier, &pool_accepted, &0); // Supplier accepts
+    let pool_accepted_state = c.gb.pool(&pool_accepted);
+    assert_eq!(pool_accepted_state.state, PoolState::Accepted);
+    let total_paid_accepted = pool_accepted_state.total_paid;
+
+    // Admin cancels the Accepted pool
+    c.gb.cancel_pool(&c.admin, &pool_accepted);
+    let cancelled_accepted = c.gb.pool(&pool_accepted);
+    assert_eq!(cancelled_accepted.state, PoolState::Cancelled);
+    assert_eq!(cancelled_accepted.owed_total, total_paid_accepted);
+
+    // All members get full refund
+    for member in &members_accepted {
+        let commitment = c.gb.commitment(&pool_accepted, member).unwrap();
+        let refundable = c.gb.refundable_of(&pool_accepted, member);
+        assert_eq!(refundable, commitment.paid); // Full refund
+        let actual_refund = c.gb.claim_refund(member, &pool_accepted);
+        assert_eq!(actual_refund, commitment.paid);
+    }
+
+    // Test 4: Admin cancel is rejected after Dispatched
+    let pool_dispatched = c.pool(0);
+    let _ = c.fill_standard(pool_dispatched);
+    c.gb.accept(&c.supplier, &pool_dispatched, &0);
+    c.gb.dispatch(&c.supplier, &pool_dispatched, &None);
+    assert_eq!(c.gb.pool(&pool_dispatched).state, PoolState::Dispatched);
+
+    assert!(c.gb.try_cancel_pool(&c.admin, &pool_dispatched).is_err());
 }
 
 #[test]

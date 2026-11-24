@@ -159,9 +159,8 @@ fn early_release_at_exact_weight_threshold_and_rounding() {
         },
     ];
     let dl = c.now() + 2 * DAY;
-    let pool = c
-        .gb
-        .create_pool(&c.organizer, &terms, &h(&c.env, 7), &0, &None, &dl);
+    let pool =
+        c.gb.create_pool(&c.organizer, &terms, &h(&c.env, 7), &0, &None, &dl);
 
     let m1 = c.trader();
     let m2 = c.trader();
@@ -215,9 +214,8 @@ fn early_release_at_exact_weight_threshold_and_rounding() {
             unit_price: USDC,
         },
     ];
-    let pool7 = c
-        .gb
-        .create_pool(&c.organizer, &terms7, &h(&c.env, 8), &0, &None, &dl);
+    let pool7 =
+        c.gb.create_pool(&c.organizer, &terms7, &h(&c.env, 8), &0, &None, &dl);
 
     let u1 = c.trader();
     let u2 = c.trader();
@@ -429,9 +427,8 @@ fn claim_refund_and_push_refunds_interleave_without_double_payment() {
 
     // Re-claiming after a manual claim or after a keeper push must produce
     // the precise contract error, not another transfer.
-    let nothing_to_claim = soroban_sdk::Error::from_contract_error(
-        group_buy::Error::NothingToClaim as u32,
-    );
+    let nothing_to_claim =
+        soroban_sdk::Error::from_contract_error(group_buy::Error::NothingToClaim as u32);
     for index in [0, 1, 2, 3, 4, 6, 8, 10] {
         assert_eq!(
             c.gb.try_claim_refund(&members[index], &pool),
@@ -458,7 +455,10 @@ fn claim_refund_and_push_refunds_interleave_without_double_payment() {
     assert!(paid.iter().all(|is_paid| *is_paid));
     assert_eq!(c.gb.push_refunds(&pool, &12), 0);
     for member in &members {
-        assert_eq!(c.gb.try_claim_refund(member, &pool), Err(Ok(nothing_to_claim)));
+        assert_eq!(
+            c.gb.try_claim_refund(member, &pool),
+            Err(Ok(nothing_to_claim))
+        );
     }
     assert_state(&paid);
 

@@ -1,0 +1,159 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 83 tests
+test coverage::commit_limits_are_enforced ... ok
+test coverage::dispute_deadline_respects_perishable_window ... FAILED
+test coverage::dispute_deadline_returns_window_end_for_delivered_pools ... FAILED
+test coverage::payout_preview_before_close_uses_moq_floor ... ok
+test coverage::double_pickup_confirmation_is_rejected ... ok
+test coverage::state_guards_reject_out_of_order_calls ... ok
+test coverage::repeated_sweep_dust_moves_zero ... ok
+test coverage::sweep_dust_blocked_while_dispute_unresolved_then_zero_after_resolution ... ok
+test coverage::sweep_dust_requires_a_final_pool_and_is_idempotent ... ok
+test coverage::views_report_consistent_figures ... ok
+test disputes_and_bond::advance_is_netted_at_settlement_and_bond_released ... ok
+test disputes_and_bond::advance_setting_is_snapshotted_when_pool_is_created ... ok
+test disputes_and_bond::advance_is_off_by_default_and_needs_bond ... ok
+test disputes_and_bond::evidence_from_parties_only ... ok
+test disputes_and_bond::arbiter_conflicts_and_permissions ... ok
+test disputes_and_bond::failed_delivery_slashes_bond_so_members_are_made_whole ... ok
+test disputes_and_bond::nothing_is_dust_for_random_sized_commitments ... ok
+test disputes_and_bond::only_parties_with_valid_claims_can_open ... ok
+test disputes_and_bond::open_freezes_amount_and_takes_deposit ... ok
+test disputes_and_bond::refund_member_credits_member_and_returns_deposit ... ok
+test disputes_and_bond::refund_pool_is_shared_by_units ... ok
+test disputes_and_bond::release_to_supplier_pays_supplier_and_forfeits_deposit ... ok
+test disputes_and_bond::shortfall_with_tier_change_and_dispute_worked_example ... ok
+test disputes_and_bond::split_divides_the_claim ... ok
+test disputes_and_bond::supplier_can_force_arbitration_when_nobody_confirms_delivery ... ok
+test disputes_and_bond::timeout_refunds_the_disputer_when_arbiter_is_silent ... ok
+test failures_and_rules::allocation_can_be_paged ... ok
+test failures_and_rules::cancel_rules ... ok
+test failures_and_rules::cluster_restriction ... ok
+test failures_and_rules::admin_cancel_pool_in_open_filled_accepted_with_full_refunds ... ok
+test failures_and_rules::commit_fails_when_member_is_pool_supplier ... ok
+test failures_and_rules::collective_member_confirmation_when_organizer_is_silent ... ok
+test failures_and_rules::create_pool_fails_when_organizer_is_supplier ... ok
+test failures_and_rules::commit_withdraw_re_commit_with_2h_lock ... FAILED
+test failures_and_rules::create_pool_validation ... ok
+test failures_and_rules::escrow_always_covers_final_bill_after_allowed_withdrawals ... ok
+test failures_and_rules::delivery_on_time_boundary_and_grace_are_tracked_separately ... ok
+test failures_and_rules::every_pause_scope_preserves_expiry_refunds ... ok
+test failures_and_rules::fail_accept_after_window_refunds_everyone ... ok
+test failures_and_rules::fail_delivery_after_deadline_refunds_everyone ... ok
+test failures_and_rules::fill_deadline_at_max_window_is_accepted ... ok
+test failures_and_rules::fill_deadline_errors_are_distinct ... ok
+test failures_and_rules::fill_deadline_equal_to_now_is_rejected_with_deadline_in_past ... ok
+test failures_and_rules::fill_deadline_one_second_beyond_max_window_is_rejected_with_deadline_too_far ... ok
+test failures_and_rules::fill_deadline_one_second_after_now_is_accepted ... ok
+test failures_and_rules::max_fill_window_can_be_raised_to_14_day_hard_cap ... ok
+test failures_and_rules::pause_blocks_new_activity_but_never_refunds ... ok
+test failures_and_rules::organizer_member_share_cap_and_sole_member_exemption ... ok
+test failures_and_rules::rules_and_limits ... ok
+test failures_and_rules::settled_pool_updates_reputation ... ok
+test failures_and_rules::shortfall_is_allocated_pro_rata_and_supplier_paid_for_received_only ... ok
+test failures_and_rules::supplier_reject_refunds ... ok
+test failures_and_rules::trader_tier_cap_applies_without_kyc ... ok
+test failures_and_rules::suspended_participants_keep_existing_pool_exits_but_not_new_activity ... ok
+test failures_and_rules::withdrawal_lock_and_tier_protection ... ok
+test fuzz::early_filled_pool_past_accept_window_is_refunded ... ok
+test fuzz::escrow_outflows_cover_all_paths_and_stay_in_allowed_set ... ok
+test coverage::max_members_per_pool_enforced_at_201 ... ok
+test happy_path::claim_refund_and_push_refunds_interleave_without_double_payment ... ok
+test happy_path::close_early_and_auto_fill_at_max ... ok
+test happy_path::early_release_at_exact_weight_threshold_and_rounding ... ok
+test happy_path::expired_pool_refunds_in_full ... ok
+test happy_path::full_flow_with_tier_refunds_leaves_no_dust ... ok
+test happy_path::increase_across_price_tier_boundary_charges_pre_tier_ceiling_and_refunds_difference ... ok
+test budget::worst_case_200_members_stays_within_budget has been running for over 60 seconds
+test happy_path::push_refunds_pays_everyone_in_batches ... ok
+test happy_path::refunds_pending_decrements_with_each_push_batch ... ok
+test happy_path::refunds_pending_is_zero_for_non_refundable_pool ... ok
+test happy_path::settles_after_window_without_pickups ... ok
+test hardening::a_member_cannot_dispute_the_same_pool_twice ... ok
+test hardening::a_resolved_dispute_cannot_be_reopened_for_more_money ... ok
+test hardening::credits_from_disputes_resolved_after_settlement_are_pushed ... ok
+test fuzz::escrow_only_pays_allowed_destinations ... ok
+test hardening::different_parties_can_each_open_one_dispute ... ok
+test hardening::revoked_attestor_cannot_attest_but_existing_records_remain ... ok
+test hardening::failures_more_than_90_days_apart_do_not_suspend ... ok
+test hardening::sla_timeouts_cannot_pay_a_member_more_than_their_allocation ... ok
+test properties::broken_tier_tables_fail_validation_not_property ... ok
+test hardening::two_supplier_failures_within_90_days_suspend_the_supplier ... ok
+test budget::worst_case_200_members_stays_within_budget ... ok
+test properties::tier_price_is_monotonic_non_increasing_in_units ... ok
+test fuzz::random_sequences_conserve_tokens_and_fail_cleanly has been running for over 60 seconds
+test properties::escrow_invariant_holds_in_all_states ... ok
+test properties::money_is_conserved ... ok
+test fuzz::random_sequences_conserve_tokens_and_fail_cleanly ... ok
+
+failures:
+
+---- coverage::dispute_deadline_respects_perishable_window stdout ----
+
+thread 'coverage::dispute_deadline_respects_perishable_window' (246590) panicked at /home/preciousakpan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-28.0.2/src/host.rs:892:9:
+HostError: Error(Contract, #309)
+
+Event log (newest first):
+   0: [Diagnostic Event] topics:[error, Error(Contract, #309)], data:"escalating error to panic"
+   1: [Diagnostic Event] topics:[error, Error(Contract, #309)], data:["contract call failed", accept, [CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2ZMN, 1, 0]]
+   2: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON, topics:[error, Error(Contract, #309)], data:"caught error from function"
+   3: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON, topics:[error, Error(Contract, #309)], data:"escalating error to panic"
+   4: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON, topics:[error, Error(Contract, #309)], data:["failing with contract error", 309]
+   5: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, topics:[fn_return, get_params], data:{accept_window_secs: 86400, advance_enabled: false, arbitration_sla_secs: 432000, bond_withdraw_cooldown_secs: 604800, confirm_window_secs: 172800, delivery_grace_secs: 172800, dispute_deposit_bp: 100, dispute_deposit_min: 5000000, early_release_weight_bp: 6000, max_fill_window_secs: 604800, max_member_share_bp: 5000, max_members_per_pool: 200, max_organizer_fee_bp: 100, organizer_confirm_window_secs: 172800, organizer_tier_caps: [5000000000, 50000000000, 250000000000], perishable_confirm_window_secs: 259200, platform_fee_bp: 150, supplier_advance_bp: [0, 0, 2000, 3000], supplier_tier_caps: [20000000000, 100000000000, 300000000000, 1000000000000], trader_tier_caps: [500000000, 5000000000, 25000000000], withdraw_lock_secs: 7200}
+   6: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, get_params], data:Void
+   7: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, topics:[fn_return, is_paused], data:false
+   8: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, is_paused], data:accept
+   9: [Diagnostic Event] topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON, accept], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2ZMN, 1, 0]
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+Writing test snapshot file for test "coverage::dispute_deadline_respects_perishable_window" to "test_snapshots/coverage/dispute_deadline_respects_perishable_window.1.json".
+
+---- coverage::dispute_deadline_returns_window_end_for_delivered_pools stdout ----
+
+thread 'coverage::dispute_deadline_returns_window_end_for_delivered_pools' (246591) panicked at /home/preciousakpan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-28.0.2/src/host.rs:892:9:
+HostError: Error(Contract, #309)
+
+Event log (newest first):
+   0: [Diagnostic Event] topics:[error, Error(Contract, #309)], data:"escalating error to panic"
+   1: [Diagnostic Event] topics:[error, Error(Contract, #309)], data:["contract call failed", accept, [CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2ZMN, 1, 0]]
+   2: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON, topics:[error, Error(Contract, #309)], data:"caught error from function"
+   3: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON, topics:[error, Error(Contract, #309)], data:"escalating error to panic"
+   4: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON, topics:[error, Error(Contract, #309)], data:["failing with contract error", 309]
+   5: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, topics:[fn_return, get_params], data:{accept_window_secs: 86400, advance_enabled: false, arbitration_sla_secs: 432000, bond_withdraw_cooldown_secs: 604800, confirm_window_secs: 172800, delivery_grace_secs: 172800, dispute_deposit_bp: 100, dispute_deposit_min: 5000000, early_release_weight_bp: 6000, max_fill_window_secs: 604800, max_member_share_bp: 5000, max_members_per_pool: 200, max_organizer_fee_bp: 100, organizer_confirm_window_secs: 172800, organizer_tier_caps: [5000000000, 50000000000, 250000000000], perishable_confirm_window_secs: 259200, platform_fee_bp: 150, supplier_advance_bp: [0, 0, 2000, 3000], supplier_tier_caps: [20000000000, 100000000000, 300000000000, 1000000000000], trader_tier_caps: [500000000, 5000000000, 25000000000], withdraw_lock_secs: 7200}
+   6: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, get_params], data:Void
+   7: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, topics:[fn_return, is_paused], data:false
+   8: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, is_paused], data:accept
+   9: [Diagnostic Event] topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON, accept], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2ZMN, 1, 0]
+
+Writing test snapshot file for test "coverage::dispute_deadline_returns_window_end_for_delivered_pools" to "test_snapshots/coverage/dispute_deadline_returns_window_end_for_delivered_pools.1.json".
+
+---- failures_and_rules::commit_withdraw_re_commit_with_2h_lock stdout ----
+
+thread 'failures_and_rules::commit_withdraw_re_commit_with_2h_lock' (246704) panicked at /home/preciousakpan/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/soroban-env-host-28.0.2/src/host.rs:892:9:
+HostError: Error(Contract, #323)
+
+Event log (newest first):
+   0: [Diagnostic Event] topics:[error, Error(Contract, #323)], data:"escalating error to panic"
+   1: [Diagnostic Event] topics:[error, Error(Contract, #323)], data:["contract call failed", withdraw_commitment, [CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA6J5N, 1]]
+   2: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON, topics:[error, Error(Contract, #323)], data:"caught error from function"
+   3: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON, topics:[error, Error(Contract, #323)], data:"escalating error to panic"
+   4: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON, topics:[error, Error(Contract, #323)], data:["failing with contract error", 323]
+   5: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, topics:[fn_return, get_params], data:{accept_window_secs: 86400, advance_enabled: false, arbitration_sla_secs: 432000, bond_withdraw_cooldown_secs: 604800, confirm_window_secs: 172800, delivery_grace_secs: 172800, dispute_deposit_bp: 100, dispute_deposit_min: 5000000, early_release_weight_bp: 6000, max_fill_window_secs: 604800, max_member_share_bp: 5000, max_members_per_pool: 200, max_organizer_fee_bp: 100, organizer_confirm_window_secs: 172800, organizer_tier_caps: [5000000000, 50000000000, 250000000000], perishable_confirm_window_secs: 259200, platform_fee_bp: 150, supplier_advance_bp: [0, 0, 2000, 3000], supplier_tier_caps: [20000000000, 100000000000, 300000000000, 1000000000000], trader_tier_caps: [500000000, 5000000000, 25000000000], withdraw_lock_secs: 7200}
+   6: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON, topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM, get_params], data:Void
+   7: [Diagnostic Event] topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATYON, withdraw_commitment], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA6J5N, 1]
+
+Writing test snapshot file for test "failures_and_rules::commit_withdraw_re_commit_with_2h_lock" to "test_snapshots/failures_and_rules/commit_withdraw_re_commit_with_2h_lock.1.json".
+
+
+failures:
+    coverage::dispute_deadline_respects_perishable_window
+    coverage::dispute_deadline_returns_window_end_for_delivered_pools
+    failures_and_rules::commit_withdraw_re_commit_with_2h_lock
+
+test result: FAILED. 80 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 103.28s
+

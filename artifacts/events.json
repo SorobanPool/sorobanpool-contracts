@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "contractsVersion": "a5ebee2",
+  "contractsVersion": "1c1038f",
   "events": [
     {
       "contract": "config",
@@ -162,7 +162,7 @@
       "contract": "group_buy",
       "event": "rejected",
       "key": "pool id",
-      "data": "(supplier, reason)"
+      "data": "supplier"
     },
     {
       "contract": "group_buy",

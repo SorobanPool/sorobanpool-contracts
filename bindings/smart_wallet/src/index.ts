@@ -38,7 +38,8 @@ export const Errors = {
   701: {message:"SignerExists"},
   702: {message:"LastSigner"},
   703: {message:"TooManySigners"},
-  704: {message:"BadCredentialId"}
+  704: {message:"BadCredentialId"},
+  705: {message:"SignerNotActive"}
 }
 
 
@@ -190,6 +191,12 @@ export interface Client {
    */
   remove_signer: ({credential_id}: {credential_id: Buffer}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
 
+  /**
+   * Construct and simulate a set_activation_delay transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Change the delay applied to future signers; existing pending signers keep their schedule.
+   */
+  set_activation_delay: ({delay_ledgers}: {delay_ledgers: u32}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+
 }
 export class Client extends ContractClient {
   static async deploy<T = Client>(
@@ -210,7 +217,7 @@ export class Client extends ContractClient {
   }
   constructor(public readonly options: ContractClientOptions) {
     super(
-      new ContractSpec([ "AAAABAAAAAAAAAAAAAAABUVycm9yAAAAAAAABQAAAAAAAAANVW5rbm93blNpZ25lcgAAAAAAArwAAAAAAAAADFNpZ25lckV4aXN0cwAAAr0AAAAAAAAACkxhc3RTaWduZXIAAAAAAr4AAAAAAAAADlRvb01hbnlTaWduZXJzAAAAAAK/AAAAAAAAAA9CYWRDcmVkZW50aWFsSWQAAAACwA==",
+      new ContractSpec([ "AAAABAAAAAAAAAAAAAAABUVycm9yAAAAAAAABgAAAAAAAAANVW5rbm93blNpZ25lcgAAAAAAArwAAAAAAAAADFNpZ25lckV4aXN0cwAAAr0AAAAAAAAACkxhc3RTaWduZXIAAAAAAr4AAAAAAAAADlRvb01hbnlTaWduZXJzAAAAAAK/AAAAAAAAAA9CYWRDcmVkZW50aWFsSWQAAAACwAAAAAAAAAAPU2lnbmVyTm90QWN0aXZlAAAAAsE=",
         "AAAAAQAAAGNXaGF0IGEgY2xpZW50IHB1dHMgaW4gdGhlIGF1dGhvcmlzYXRpb24gZW50cnkncyBzaWduYXR1cmU6IHdoaWNoIHBhc3NrZXkgc2lnbmVkLCBhbmQgaXRzIGFzc2VydGlvbi4AAAAAAAAAAAlTaWduYXR1cmUAAAAAAAAEAAAAAAAAABJhdXRoZW50aWNhdG9yX2RhdGEAAAAAAA4AAAAAAAAAC2NsaWVudF9kYXRhAAAAAA4AAAA6V2ViQXV0aG4gY3JlZGVudGlhbCBpZCAocmF3IGJ5dGVzKSBvZiB0aGUgc2lnbmluZyBwYXNza2V5LgAAAAAADWNyZWRlbnRpYWxfaWQAAAAAAAAOAAAAPnIgfHwgcywgMzIgYnl0ZXMgZWFjaCwgcyBpbiB0aGUgbG93ZXIgaGFsZiBvZiB0aGUgY3VydmUgb3JkZXIuAAAAAAAJc2lnbmF0dXJlAAAAAAAD7gAAAEA=",
         "AAAAAAAAAFNBZGRzIGFub3RoZXIgcGFzc2tleSAoZS5nLiBhIG5ldyBwaG9uZSkuIE11c3QgYmUgYXV0aG9yaXNlZCBieSBhbiBleGlzdGluZyBwYXNza2V5LgAAAAAKYWRkX3NpZ25lcgAAAAAAAgAAAAAAAAANY3JlZGVudGlhbF9pZAAAAAAAAA4AAAAAAAAACnB1YmxpY19rZXkAAAAAA+4AAABBAAAAAA==",
         "AAAAAAAAAAAAAAAKcHVibGljX2tleQAAAAAAAQAAAAAAAAANY3JlZGVudGlhbF9pZAAAAAAAAA4AAAABAAAD6AAAA+4AAABB",
@@ -218,6 +225,7 @@ export class Client extends ContractClient {
         "AAAAAAAAAAAAAAAMc2lnbmVyX2NvdW50AAAAAAAAAAEAAAAE",
         "AAAAAAAAAGlEZXBsb3llZCBieSB0aGUgU29yb2JhblBvb2wgc3BvbnNvciB3aXRoIHRoZSB1c2VyJ3MgZmlyc3QgcGFzc2tleSAodmVyaWZpZWQgc2VydmVyLXNpZGUgYXQgcmVnaXN0cmF0aW9uKS4AAAAAAAANX19jb25zdHJ1Y3RvcgAAAAAAAAIAAAAAAAAADWNyZWRlbnRpYWxfaWQAAAAAAAAOAAAAAAAAAApwdWJsaWNfa2V5AAAAAAPuAAAAQQAAAAA=",
         "AAAAAAAAAGlSZW1vdmVzIGEgcGFzc2tleSAobG9zdCBwaG9uZSkuIFRoZSBsYXN0IHBhc3NrZXkgY2FuIG5ldmVyIGJlIHJlbW92ZWQsIHNvIHRoZSBhY2NvdW50IGNhbm5vdCBsb2NrIGl0c2VsZi4AAAAAAAANcmVtb3ZlX3NpZ25lcgAAAAAAAAEAAAAAAAAADWNyZWRlbnRpYWxfaWQAAAAAAAAOAAAAAA==",
+        "AAAAAAAAAFlDaGFuZ2UgdGhlIGRlbGF5IGFwcGxpZWQgdG8gZnV0dXJlIHNpZ25lcnM7IGV4aXN0aW5nIHBlbmRpbmcgc2lnbmVycyBrZWVwIHRoZWlyIHNjaGVkdWxlLgAAAAAAABRzZXRfYWN0aXZhdGlvbl9kZWxheQAAAAEAAAAAAAAADWRlbGF5X2xlZGdlcnMAAAAAAAAEAAAAAA==",
         "AAAAAgAAAF9Db250cmFjdCBleGVjdXRhYmxlIHVzZWQgZm9yIGNyZWF0aW5nIGEgbmV3IGNvbnRyYWN0IGFuZCB1c2VkIGluCmBDcmVhdGVDb250cmFjdEhvc3RGbkNvbnRleHRgLgAAAAAAAAAAEkNvbnRyYWN0RXhlY3V0YWJsZQAAAAAAAgAAAAEAAAB4RXhlY3V0YWJsZSBzcGVjaWZpZWQgYnkgdGhlIGNvbnRyYWN0IGluc3RhbmNlIGFzIGEgc3BlY2lmaWMgV2FzbSBjb250cmFjdCBjb2RlIGVudHJ5IGlkZW50aWZpZWQgYnkgaXRzIFdhc20gc2hhMjU2IGhhc2guAAAABFdhc20AAAABAAAD7gAAACAAAAABAAAAX0V4ZWN1dGFibGUgcmVmZXJlbmNlIHZpYSBhIHBlcnNpc3RlbnQgc3RvcmFnZSBlbnRyeSBvd25lZCBieSB0aGlzIGNvbnRyYWN0IG9yIGFub3RoZXIgY29udHJhY3QuAAAAAAtFeHRlcm5hbFJlZgAAAAABAAAH0AAAABVDb250cmFjdEV4ZWN1dGFibGVSZWYAAAA=",
         "AAAAAQAAAMBFeGVjdXRhYmxlIHJlZmVyZW5jZWQgdmlhIGEgcGVyc2lzdGVudCBzdG9yYWdlIGVudHJ5IG93bmVkIGJ5IGEgY29udHJhY3QsCmVpdGhlciB0aGlzIGNvbnRyYWN0IG9yIGFub3RoZXIgY29udHJhY3QuCgpUaGUgcGVyc2lzdGVudCBzdG9yYWdlIGVudHJ5IG93bmVkIGJ5IHRoZSBgb3duZXJgIGhhcyB0aGUgYHRhZ2AgYXMgaXRzIGtleS4AAAAAAAAAFUNvbnRyYWN0RXhlY3V0YWJsZVJlZgAAAAAAAAIAAAAAAAAABW93bmVyAAAAAAAAEwAAAAAAAAADdGFnAAAAABA=",
         "AAAAAgAAAONDb250ZXh0IG9mIGEgc2luZ2xlIGF1dGhvcml6ZWQgY2FsbCBwZXJmb3JtZWQgYnkgYW4gYWRkcmVzcy4KCkN1c3RvbSBhY2NvdW50IGNvbnRyYWN0cyB0aGF0IGltcGxlbWVudCBgX19jaGVja19hdXRoYCBzcGVjaWFsIGZ1bmN0aW9uCnJlY2VpdmUgYSBsaXN0IG9mIGBDb250ZXh0YCB2YWx1ZXMgY29ycmVzcG9uZGluZyB0byBhbGwgdGhlIGNhbGxzIHRoYXQKbmVlZCB0byBiZSBhdXRob3JpemVkLgAAAAAAAAAAB0NvbnRleHQAAAAAAwAAAAEAAAAUQ29udHJhY3QgaW52b2NhdGlvbi4AAAAIQ29udHJhY3QAAAABAAAH0AAAAA9Db250cmFjdENvbnRleHQAAAAAAQAAAD1Db250cmFjdCB0aGF0IGhhcyBhIGNvbnN0cnVjdG9yIHdpdGggbm8gYXJndW1lbnRzIGlzIGNyZWF0ZWQuAAAAAAAAFENyZWF0ZUNvbnRyYWN0SG9zdEZuAAAAAQAAB9AAAAAbQ3JlYXRlQ29udHJhY3RIb3N0Rm5Db250ZXh0AAAAAAEAAABEQ29udHJhY3QgdGhhdCBoYXMgYSBjb25zdHJ1Y3RvciB3aXRoIDEgb3IgbW9yZSBhcmd1bWVudHMgaXMgY3JlYXRlZC4AAAAcQ3JlYXRlQ29udHJhY3RXaXRoQ3Rvckhvc3RGbgAAAAEAAAfQAAAAKkNyZWF0ZUNvbnRyYWN0V2l0aENvbnN0cnVjdG9ySG9zdEZuQ29udGV4dAAA",
@@ -232,6 +240,7 @@ export class Client extends ContractClient {
     add_signer: this.txFromJSON<null>,
         public_key: this.txFromJSON<Option<Buffer>>,
         signer_count: this.txFromJSON<u32>,
-        remove_signer: this.txFromJSON<null>
+        remove_signer: this.txFromJSON<null>,
+        set_activation_delay: this.txFromJSON<null>
   }
 }

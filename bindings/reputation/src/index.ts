@@ -63,8 +63,6 @@ last_failed_at: u64;
 }
 
 export interface Client {
-  /** Admin-only bounded decrement of one named reputation counter. */
-  correct: ({admin, subject, role, counter, delta, reason}: {admin: string, subject: string, role: Role, counter: string, delta: u32, reason: string}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
   /**
    * Construct and simulate a tier transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
@@ -81,6 +79,12 @@ export interface Client {
    * Caller must be the group_buy or disputes contract.
    */
   record: ({caller, subject, role, event}: {caller: string, subject: string, role: Role, event: string}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a correct transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Admin-only bounded decrement. Counters saturate at u32::MAX when recorded normally.
+   */
+  correct: ({admin, subject, role, counter, delta, reason}: {admin: string, subject: string, role: Role, counter: string, delta: u32, reason: string}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
 
 }
 export class Client extends ContractClient {
@@ -102,10 +106,11 @@ export class Client extends ContractClient {
   }
   constructor(public readonly options: ContractClientOptions) {
     super(
-      new ContractSpec([ "AAAABAAAAAAAAAAAAAAABUVycm9yAAAAAAAAAwAAAAAAAAATTm90QXV0aG9yaXplZENhbGxlcgAAAAJYAAAAAAAAAAxVbmtub3duRXZlbnQAAAJZAAAAAAAAAA5Ob3RJbml0aWFsaXNlZAAAAAACWg==",
+      new ContractSpec([ "AAAABAAAAAAAAAAAAAAABUVycm9yAAAAAAAABgAAAAAAAAATTm90QXV0aG9yaXplZENhbGxlcgAAAAJYAAAAAAAAAAxVbmtub3duRXZlbnQAAAJZAAAAAAAAAA5Ob3RJbml0aWFsaXNlZAAAAAACWgAAAAAAAAARSW52YWxpZENvcnJlY3Rpb24AAAAAAAJbAAAAAAAAABJDb3JyZWN0aW9uVG9vTGFyZ2UAAAAAAlwAAAAAAAAAE0NvcnJlY3Rpb25VbmRlcmZsb3cAAAACXQ==",
         "AAAAAAAAAAAAAAAEdGllcgAAAAIAAAAAAAAAB3N1YmplY3QAAAAAEwAAAAAAAAAEcm9sZQAAB9AAAAAEUm9sZQAAAAEAAAAE",
         "AAAAAAAAAAAAAAAFc3RhdHMAAAAAAAACAAAAAAAAAAdzdWJqZWN0AAAAABMAAAAAAAAABHJvbGUAAAfQAAAABFJvbGUAAAABAAAH0AAAAAhSZXBTdGF0cw==",
         "AAAAAAAAAIBFdmVudHM6IHNldHRsZWQsIGZhaWxlZCwgb25fdGltZSwgbGF0ZSwgZF9vcGVuLCBkX3dvbiwgZF9sb3N0LCBzaG9ydCwgcGlja3VwLgpDYWxsZXIgbXVzdCBiZSB0aGUgZ3JvdXBfYnV5IG9yIGRpc3B1dGVzIGNvbnRyYWN0LgAAAAZyZWNvcmQAAAAAAAQAAAAAAAAABmNhbGxlcgAAAAAAEwAAAAAAAAAHc3ViamVjdAAAAAATAAAAAAAAAARyb2xlAAAH0AAAAARSb2xlAAAAAAAAAAVldmVudAAAAAAAABEAAAAA",
+        "AAAAAAAAAFNBZG1pbi1vbmx5IGJvdW5kZWQgZGVjcmVtZW50LiBDb3VudGVycyBzYXR1cmF0ZSBhdCB1MzI6Ok1BWCB3aGVuIHJlY29yZGVkIG5vcm1hbGx5LgAAAAAHY29ycmVjdAAAAAAGAAAAAAAAAAVhZG1pbgAAAAAAABMAAAAAAAAAB3N1YmplY3QAAAAAEwAAAAAAAAAEcm9sZQAAB9AAAAAEUm9sZQAAAAAAAAAHY291bnRlcgAAAAARAAAAAAAAAAVkZWx0YQAAAAAAAAQAAAAAAAAABnJlYXNvbgAAAAAAEQAAAAA=",
         "AAAAAAAAAAAAAAANX19jb25zdHJ1Y3RvcgAAAAAAAAEAAAAAAAAABmNvbmZpZwAAAAAAEwAAAAA=",
         "AAAAAgAAAAAAAAAAAAAABFJvbGUAAAADAAAAAAAAAAAAAAAGVHJhZGVyAAAAAAAAAAAAAAAAAAlPcmdhbml6ZXIAAAAAAAAAAAAAAAAAAAhTdXBwbGllcg==",
         "AAAAAQAAAAAAAAAAAAAACFJlcFN0YXRzAAAACwAAAAAAAAANZGlzcHV0ZXNfbG9zdAAAAAAAAAQAAAAAAAAAD2Rpc3B1dGVzX29wZW5lZAAAAAAEAAAAAAAAAAxkaXNwdXRlc193b24AAAAEAAAAAAAAAA9maXJzdF9hY3RpdmVfYXQAAAAABgAAAGdMZWRnZXIgdGltZSBvZiB0aGUgbW9zdCByZWNlbnQgYGZhaWxlZGAgZXZlbnQgKDAgaWYgbm9uZSk7IGRyaXZlcyB0aGUgMi1mYWlsdXJlcy1pbi05MC1kYXlzIHN1c3BlbnNpb24uAAAAAA5sYXN0X2ZhaWxlZF9hdAAAAAAABgAAAAAAAAAEbGF0ZQAAAAQAAAAAAAAAB29uX3RpbWUAAAAABAAAAAAAAAARcGlja3Vwc19jb25maXJtZWQAAAAAAAAEAAAAAAAAAAxwb29sc19mYWlsZWQAAAAEAAAAAAAAAA1wb29sc19zZXR0bGVkAAAAAAAABAAAAAAAAAAQc2hvcnRfZGVsaXZlcmllcwAAAAQ=" ]),
@@ -113,9 +118,9 @@ export class Client extends ContractClient {
     )
   }
   public readonly fromJSON = {
-    correct: this.txFromJSON<null>,
     tier: this.txFromJSON<u32>,
         stats: this.txFromJSON<RepStats>,
-        record: this.txFromJSON<null>
+        record: this.txFromJSON<null>,
+        correct: this.txFromJSON<null>
   }
 }

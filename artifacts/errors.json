@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "contractsVersion": "a5ebee2",
+  "contractsVersion": "1c1038f",
   "errors": [
     {
       "code": 100,
@@ -338,11 +338,6 @@
       "name": "OrganizerIsSupplier"
     },
     {
-      "code": 348,
-      "contract": "group_buy",
-      "name": "InvalidRejectReason"
-    },
-    {
       "code": 400,
       "contract": "disputes",
       "name": "NotInitialised"
@@ -406,11 +401,6 @@
       "code": 412,
       "contract": "disputes",
       "name": "AlreadyDisputed"
-    },
-    {
-      "code": 413,
-      "contract": "disputes",
-      "name": "TooManyOpenDisputes"
     },
     {
       "code": 500,

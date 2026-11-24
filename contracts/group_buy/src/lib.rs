@@ -1290,6 +1290,22 @@ impl GroupBuy {
         confirm_deadline_of(&params, &load_pool(&env, pool_id))
     }
 
+    /// Returns the end of the dispute window for a pool.
+    ///
+    /// The dispute window opens once the pool reaches `Delivered` and closes after
+    /// the confirmation period expires. The length is determined by `confirm_window_secs`
+    /// for regular pools or `perishable_confirm_window_secs` for perishable goods.
+    ///
+    /// Returns an error if the pool has not yet reached `Delivered` state.
+    pub fn dispute_deadline(env: Env, pool_id: u64) -> u64 {
+        let pool = load_pool(&env, pool_id);
+        if !matches!(pool.state, PoolState::Delivered | PoolState::Settled) {
+            fail::<()>(&env, Error::WrongState);
+        }
+        let params = cfg(&env).get_params();
+        pool.delivered_at + confirm_window(&params, &pool)
+    }
+
     pub fn refundable_of(env: Env, pool_id: u64, member: Address) -> i128 {
         let pool = load_pool(&env, pool_id);
         match load_commit(&env, pool_id, &member) {

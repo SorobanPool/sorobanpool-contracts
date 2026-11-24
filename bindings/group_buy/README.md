@@ -52,7 +52,3 @@ contract.|
 ```
 
 As long as your editor is configured to show JavaScript/TypeScript documentation, you can pause your typing at that `|` to get a list of all exports and inline-documentation for each. It exports a separate [async](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function) function for each method in the smart contract, with documentation for each generated from the comments the contract's author included in the original source code.
-
-## Integrator Guide
-
-For end-to-end examples of constructing `PoolTerms`, computing `offer_hash` / `hub_hash` using canonical JSON hashing, and interacting with testnet contracts, see the [Integrator Guide](../../docs/integrator-guide.md).

@@ -91,7 +91,9 @@ fn put_signer(env: &Env, credential_id: &Bytes, public_key: &BytesN<65>, activat
     }
     env.storage().persistent().set(&k, public_key);
     let activation_key = Key::Activation(credential_id.clone());
-    env.storage().persistent().set(&activation_key, &activation_ledger);
+    env.storage()
+        .persistent()
+        .set(&activation_key, &activation_ledger);
     env.storage()
         .persistent()
         .extend_ttl(&activation_key, TTL_THRESHOLD, TTL_EXTEND_TO);
@@ -99,13 +101,7 @@ fn put_signer(env: &Env, credential_id: &Bytes, public_key: &BytesN<65>, activat
         .persistent()
         .extend_ttl(&k, TTL_THRESHOLD, TTL_EXTEND_TO);
     env.storage().instance().set(&Key::Count, &(n + 1));
-    emit(
-        env,
-        C,
-        events::KEY_ADD,
-        credential_id.clone(),
-        (),
-    );
+    emit(env, C, events::KEY_ADD, credential_id.clone(), ());
 }
 
 fn activation_delay(env: &Env) -> u32 {
